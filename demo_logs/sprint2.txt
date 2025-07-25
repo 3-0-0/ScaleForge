@@ -1,0 +1,7 @@
+[
+  {
+    "src": "test_assets",
+    "dst": "${APP_ROOT}/outputs/test_assets",
+    "scale": 2
+  }
+]

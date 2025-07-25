@@ -1,7 +1,4 @@
 import sqlite3
-from pathlib import Path
-
-import pytest
 
 from scaleforge.db.models import Job, JobStatus, init_db
 from scaleforge.utils.hash import hash_params
@@ -19,9 +16,8 @@ def test_create_or_skip(tmp_path):
     img = tmp_path / "a.png"
     img.write_bytes(b"123")
     h = hash_params(img, {"scale": 2})
-    job1 = Job.create_or_skip(conn, {"src_path": str(img), "hash": h})
-    job2 = Job.create_or_skip(conn, {"src_path": str(img), "hash": h})
-    assert job2 is None
+    Job.create_or_skip(conn, {"src_path": str(img), "hash": h})
+    assert Job.create_or_skip(conn, {"src_path": str(img), "hash": h}) is None
 
 
 def test_pending_includes_retryable_failed(tmp_path):

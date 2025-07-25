@@ -1,7 +1,4 @@
-from pathlib import Path
-
 from scaleforge.utils.hash import hash_params
-import os
 
 
 def test_same_file_same_hash(tmp_path):

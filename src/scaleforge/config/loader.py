@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import os
 import pathlib
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
