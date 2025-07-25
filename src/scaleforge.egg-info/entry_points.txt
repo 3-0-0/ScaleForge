@@ -1,0 +1,2 @@
+[console_scripts]
+scaleforge = scaleforge.cli.main:cli
