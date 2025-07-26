@@ -29,6 +29,9 @@ dependencies = [
 scaleforge = "scaleforge.cli.main:cli"
 
 [project.optional-dependencies]
+# Runtime heavy extras
+torch = ["torch", "realesrgan"]
+
 # Development extras
 lint = ["ruff>=0.4"]
 test = ["pytest>=8", "pytest-cov>=4"]
