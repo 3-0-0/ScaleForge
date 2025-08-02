@@ -9,7 +9,8 @@ from __future__ import annotations
 import logging
 import os
 
-from scaleforge.backend.base import Backend, VulkanBackend
+from scaleforge.backend.base import Backend
+from scaleforge.backend.vulkan_backend import VulkanBackend
 from scaleforge.backend.torch_backend import TorchBackend
 
 logger = logging.getLogger(__name__)
