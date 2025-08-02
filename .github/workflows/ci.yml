@@ -13,7 +13,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-      - run: pip install -e .[lint,test]
+      - run: pip install -e .
+      - run: pip install -e '.[lint,test]'
       - run: ruff check .
       - run: pytest --cov=scaleforge
       - uses: codecov/codecov-action@v4
