@@ -96,6 +96,10 @@ class MainUI(BoxLayout):
         
         # Connect dry run toggle
         self.ids.dry_run_toggle.bind(active=self._on_dry_run_toggle)
+        
+        # Add edit resolutions button
+        self.ids.edit_resolutions_btn.bind(on_press=self._open_resolution_editor)
+        
         controls = BoxLayout(orientation='vertical', size_hint_y=0.3)
         
         # File selection controls
@@ -342,6 +346,23 @@ class MainUI(BoxLayout):
         self.settings["dry_run"] = value
         save_settings(self.settings)
         self._update_cli_preview()
+
+    def _open_resolution_editor(self, instance):
+        """Open resolution preset editor dialog."""
+        from scaleforge.gui.components.resolution_editor import ResolutionEditorPopup
+        from scaleforge.utils.presets_io import load_presets
+        
+        def refresh_resolutions():
+            """Callback to refresh resolution selector after edits."""
+            resolution_selector = self.ids.resolution_selector
+            current = resolution_selector.text
+            resolution_selector.values = [
+                p["label"] for p in load_presets()
+            ]
+            resolution_selector.text = current if current in resolution_selector.values else ""
+
+        popup = ResolutionEditorPopup(on_save_callback=refresh_resolutions)
+        popup.open()
 
 class ScaleForgeApp(App):
     """Main Kivy application class."""
