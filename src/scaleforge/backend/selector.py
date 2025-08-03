@@ -50,3 +50,17 @@ def get_backend() -> Backend:
     except ModuleNotFoundError:  # pragma: no cover – unlikely
         logger.warning("PyTorch not installed – defaulting to Vulkan stub")
         return VulkanBackend()
+
+from .caps import GPUCapabilityCache
+
+def get_backend(config):
+    caps_cache = GPUCapabilityCache(config.APP_ROOT)
+    cached_caps = caps_cache.load()
+    
+    if cached_caps:
+        return _select_backend_based_on_caps(cached_caps)
+    
+    # Run minimal probe if no cache
+    probe_result = _run_preflight_probe()
+    caps_cache.save(probe_result['max_tile'], probe_result['max_pixels'])
+    return _select_backend_based_on_caps(probe_result)
