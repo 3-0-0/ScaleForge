@@ -46,11 +46,30 @@ class JobCard(BoxLayout):
         self._status_poller = None
         self.enable_tooltips = True  # Tooltip toggle flag
         self._hover_timeout = None  # For debounce tracking
+        
+        # Visual states
+        self.default_color = (0.1, 0.1, 0.1, 1)
+        self.hover_color = (0.15, 0.15, 0.15, 1)
+        self.background_color = self.default_color
+        self.background_normal = ''
+        
+        # Bind hover events
+        self.bind(
+            on_enter=lambda x: setattr(self, 'background_color', self.hover_color),
+            on_leave=lambda x: setattr(self, 'background_color', self.default_color)
+        )
+        
+        # Keyboard navigation
+        self._focused_button = None
+        self.keyboard = None
+        Window.bind(on_key_down=self._on_keyboard_down)
 
     def _show_tooltip(self, button, *args):
         """Show tooltip after debounce delay if enabled."""
         if self.enable_tooltips and hasattr(button, 'tooltip'):
-            button.tooltip.opacity = 1
+            from kivy.animation import Animation
+            anim = Animation(opacity=1, duration=0.2)
+            anim.start(button.tooltip)
 
     def _setup_tooltips(self, *args):
         """Add tooltips to control buttons with hover behavior."""
@@ -113,16 +132,16 @@ class JobCard(BoxLayout):
             ),
             on_leave=lambda b: (
                 self._hover_timeout and self._hover_timeout.cancel(),
-                setattr(b.tooltip, 'opacity', 0)
+                Animation(opacity=0, duration=0.15).start(b.tooltip))
             )
         )
         self.ids.cancel_btn.bind(
             on_enter=lambda b: (self._hover_timeout and self._hover_timeout.cancel(), Clock.schedule_once(lambda dt: setattr(b.tooltip, 'opacity', 1), 0.15) if self.enable_tooltips else None),
-            on_leave=lambda b: (self._hover_timeout and self._hover_timeout.cancel(), setattr(b.tooltip, 'opacity', 0))
+            on_leave=lambda b: (self._hover_timeout and self._hover_timeout.cancel(), Animation(opacity=0, duration=0.15).start(b.tooltip))
         )
         self.ids.delete_btn.bind(
             on_enter=lambda b: (self._hover_timeout and self._hover_timeout.cancel(), Clock.schedule_once(lambda dt: setattr(b.tooltip, 'opacity', 1), 0.15) if self.enable_tooltips else None),
-            on_leave=lambda b: (self._hover_timeout and self._hover_timeout.cancel(), setattr(b.tooltip, 'opacity', 0))
+            on_leave=lambda b: (self._hover_timeout and self._hover_timeout.cancel(), Animation(opacity=0, duration=0.15).start(b.tooltip))
         )
 
     def _update_button_states(self, *args):
@@ -142,6 +161,15 @@ class JobCard(BoxLayout):
         )
         self.ids.cancel_btn.disabled = self.status not in ('queued', 'running', 'paused')
         self.ids.delete_btn.disabled = self.status in ('running', 'paused')
+        
+        # Error state styling
+        if self.status == 'failed':
+            self.ids.status_label.color = (1, 0.2, 0.2, 1)  # Red error text
+            self.border_color = (1, 0, 0, 0.5)  # Red border
+            self.border_width = [2, 2, 2, 2]
+        else:
+            self.ids.status_label.color = (0.8, 0.8, 0.8, 1)  # Default text
+            self.border_width = [0, 0, 0, 0]
 
     def on_delete(self, *args):
         """Clean up tooltips before deletion."""
