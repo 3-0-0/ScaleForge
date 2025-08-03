@@ -64,3 +64,26 @@ def get_backend(config):
     probe_result = _run_preflight_probe()
     caps_cache.save(probe_result['max_tile'], probe_result['max_pixels'])
     return _select_backend_based_on_caps(probe_result)
+
+from .caps import GPUCapabilityCache
+
+def get_backend(config):
+    caps_cache = GPUCapabilityCache(config.APP_ROOT)
+    cached_caps = caps_cache.load()
+    
+    if cached_caps:
+        return _select_backend_based_on_caps(cached_caps)
+    
+    # Run minimal probe if no cache
+    probe_result = _run_preflight_probe()
+    caps_cache.save(probe_result['max_tile'], probe_result['max_pixels'])
+    return _select_backend_based_on_caps(probe_result)
+from .probe import run_preflight_probe
+
+def _is_mobile_vulkan_supported():
+    """Check for mobile-friendly Vulkan implementation"""
+    import platform
+    if platform.system() == 'Linux':
+        # Check for ARM architecture (common in mobile)
+        return 'aarch64' in platform.machine()
+    return False
