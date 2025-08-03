@@ -11,6 +11,7 @@ import os
 
 from scaleforge.backend.base import Backend, VulkanBackend
 from scaleforge.backend.torch_backend import TorchBackend
+from scaleforge.backend.caps import load_cached_caps
 
 logger = logging.getLogger(__name__)
 
@@ -29,11 +30,11 @@ def get_backend() -> Backend:
     """Return a Backend instance following the selection rules."""
 
     use_stub = os.getenv("SF_STUB_UPSCALE", "0") == "1"
-
     override = _env_override()
+
     if override in {"torch", "pytorch"}:
         logger.info("Backend forced to Torch (override)")
-        return TorchBackend(stub=use_stub)
+        return TorchBackend(stub=use_stub, caps=load_cached_caps())
     if override == "vulkan":
         logger.info("Backend forced to Vulkan (override)")
         return VulkanBackend()
@@ -45,7 +46,7 @@ def get_backend() -> Backend:
             logger.info("Detected CUDA – using Torch backend")
         else:
             logger.info("Torch CPU – using Torch backend")
-        return TorchBackend(stub=use_stub)
+        return TorchBackend(stub=use_stub, caps=load_cached_caps())
     except ModuleNotFoundError:  # pragma: no cover – unlikely
         logger.warning("PyTorch not installed – defaulting to Vulkan stub")
         return VulkanBackend()

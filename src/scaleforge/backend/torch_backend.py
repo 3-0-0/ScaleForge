@@ -22,9 +22,10 @@ class TorchBackend(Backend):
 
     name = "torch"
 
-    def __init__(self, *, stub: bool = False):
+    def __init__(self, *, stub: bool = False, caps: dict | None = None):
         self._use_stub = stub
         self._realesrgan = None
+        self._caps = caps or {}
         if not stub:
             try:
                 from realesrgan import RealESRGAN  # noqa: WPS433 (optional import)
@@ -47,6 +48,11 @@ class TorchBackend(Backend):
         if self._use_stub or self._realesrgan is None:
             await asyncio.to_thread(self._stub_resize, src, dst)
         else:
+            # Validate tile size against cached capabilities
+            max_tile = self._caps.get("max_tile", 512)
+            if tile and tile > max_tile:
+                logger.warning(f"Requested tile size {tile} exceeds max {max_tile}")
+                tile = max_tile
             await asyncio.to_thread(self._esrgan_resize, src, dst)
 
     # ---------------------------------------------------------------------
