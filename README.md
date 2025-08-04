@@ -52,9 +52,19 @@ Get the latest release from our [GitHub Releases](https://github.com/3-0-0/Scale
 
 ## 🤝 Contributing
 
-We welcome feedback and contributions! Please:
-- Report bugs via [GitHub Issues](https://github.com/3-0-0/ScaleForge/issues)
-- Share suggestions in our [Discussions](https://github.com/3-0-0/ScaleForge/discussions)
+We welcome contributions from developers of all levels! Here's how to get started:
+
+1. **First time contributing?** Check out our:
+   - [Contributor Guide](CONTRIBUTING.md) - Setup and workflow
+   - [Good First Issues](docs/good-first-issues.md) - Starter tasks
+
+2. **Have an idea?**
+   - Share suggestions in [Discussions](https://github.com/3-0-0/ScaleForge/discussions)
+   - Report bugs via [Issues](https://github.com/3-0-0/ScaleForge/issues)
+
+3. **Ready to code?**
+   - Fork the repo and create a feature branch
+   - Submit a Pull Request with your changes
 
 ## 🗺️ Roadmap
 
