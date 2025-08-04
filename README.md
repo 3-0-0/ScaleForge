@@ -1,9 +1,14 @@
 
 # ScaleForge 🚀
 
+[![PyPI Version](https://img.shields.io/pypi/v/scaleforge)](https://pypi.org/project/scaleforge/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)
+[![GitHub Stars](https://img.shields.io/github/stars/3-0-0/ScaleForge)](https://github.com/3-0-0/ScaleForge/stargazers)
+
 ![ScaleForge Demo](docs/demo.gif) *Example: Upscaling 512px → 2048px*
 
-Portable, cross-platform image upscaler powered by Real-ESRGAN with GPU acceleration.
+Portable, cross-platform image upscaler powered by Real-ESRGAN with GPU acceleration. Transform low-resolution images into high-quality enlargements with AI-powered upscaling.
 
 ## ✨ Key Features
 
@@ -50,6 +55,23 @@ Get the latest release from our [GitHub Releases](https://github.com/3-0-0/Scale
 We welcome feedback and contributions! Please:
 - Report bugs via [GitHub Issues](https://github.com/3-0-0/ScaleForge/issues)
 - Share suggestions in our [Discussions](https://github.com/3-0-0/ScaleForge/discussions)
+
+## 🗺️ Roadmap
+
+Upcoming features:
+- 🎨 Additional AI models
+- 🌐 Web interface option
+- 📱 Mobile app version
+- 🔍 Comparison tools
+
+View full roadmap: [ROADMAP.md](ROADMAP.md)
+
+## 🙏 Credits
+
+ScaleForge is made possible by:
+- [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) - Core upscaling models
+- [NCNN](https://github.com/Tencent/ncnn) - High-performance inference
+- Our amazing [contributors](https://github.com/3-0-0/ScaleForge/graphs/contributors)
 
 ## 📜 License
 
