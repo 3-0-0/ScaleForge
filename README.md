@@ -1,29 +1,60 @@
 
-# ScaleForge
+# ScaleForge 🚀
 
-Portable, cross-platform image upscaler powered by Real-ESRGAN.
+![ScaleForge Demo](docs/demo.gif) *Example: Upscaling 512px → 2048px*
 
-## Features
+Portable, cross-platform image upscaler powered by Real-ESRGAN with GPU acceleration.
 
-- Automatic GPU detection and optimization
-- Batch processing
-- Multiple output formats
-- Progress tracking
+## ✨ Key Features
 
-### GPU detection & caps cache
+- 🖼️ **AI-Powered Upscaling** (Real-ESRGAN models)
+- ⚡ **GPU Acceleration** (NCNN/PyTorch backends)
+- 🖥️ **Cross-Platform GUI** (Kivy-based)
+- 📦 **Portable** (Single executable available)
+- 🔄 **Batch Processing** (Process entire folders)
+- 📊 **Progress Tracking** (Job queue with pause/resume)
 
-ScaleForge probes the GPU vendor and capability limits on startup and caches the results in `gpu_caps.json`. When detection fails (e.g., headless CI or no GPU), it falls back to safe defaults. Before doing work, ScaleForge computes the effective pixel cost (width × height × scale²) and skips jobs exceeding `max_pixels`, marking them with status `skipped_oversize` to avoid overloading the backend.
+## 🛠️ Installation
 
-## Installation
-
+### Option 1: Pip Install
 ```bash
 pip install scaleforge
 ```
 
-## Usage
+### Option 2: Download Pre-built
+Get the latest release from our [GitHub Releases](https://github.com/3-0-0/ScaleForge/releases) page.
 
-```bash
-scaleforge cli --scale 4 input.jpg
-```
+## 🚀 Quick Start
 
-See `scaleforge cli --help` for all options.
+1. **Launch ScaleForge**:
+   ```bash
+   scaleforge gui  # For graphical interface
+   ```
+   or
+   ```bash
+   scaleforge cli --scale 4 input.jpg  # For command line
+   ```
+
+2. **Select images** and desired upscale factor
+3. **Choose model** (quality vs speed tradeoff)
+4. **Run** and wait for results!
+
+## 📚 Learn More
+
+- [First Steps Guide](docs/first_steps.md) - New user walkthrough
+- [Advanced Usage](docs/advanced.md) - CLI options and configs
+- [Feedback Guide](docs/feedback.md) - How to report issues
+
+## 🤝 Contributing
+
+We welcome feedback and contributions! Please:
+- Report bugs via [GitHub Issues](https://github.com/3-0-0/ScaleForge/issues)
+- Share suggestions in our [Discussions](https://github.com/3-0-0/ScaleForge/discussions)
+
+## 📜 License
+
+MIT License - See [LICENSE](LICENSE) for details.
+
+---
+
+*ScaleForge v0.1.0-beta - Making high-quality upscaling accessible to everyone.*
