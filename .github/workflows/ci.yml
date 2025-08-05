@@ -13,7 +13,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
+
+      - run: python --version
+      - run: uname -a
       - run: pip install -e '.[dev,lint,test]'
+      - run: pip list
+
       - run: pip freeze > requirements_ci_runtime.txt
       - run: ruff check .
       - run: pytest --cov=scaleforge
