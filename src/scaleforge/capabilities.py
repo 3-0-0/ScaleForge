@@ -9,14 +9,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+logger = logging.getLogger(__name__)
+
 try:
     import torch
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
     logger.debug("PyTorch not available - Vulkan/CPU backends only")
-
-logger = logging.getLogger(__name__)
 
 @dataclass
 class DeviceCapabilities:
