@@ -1,0 +1,51 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+        extras: ["", "gpu"]
+    
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        pip install -e .[${{ matrix.extras }}]
+        pip install -e .[test]
+    
+    - name: Run tests
+      run: pytest -v --cov=scaleforge
+
+  video:
+    needs: test
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'pull_request' || env.VIDEO_TESTS == '1' }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    
+    - name: Install FFmpeg
+      run: sudo apt-get install -y ffmpeg
+    
+    - name: Install dependencies
+      run: |
+        pip install -e .[video,test]
+    
+    - name: Run video tests
+      run: |
+        VIDEO_TESTS=1 pytest -v tests/video/ -m "video"
+      env:
+        VIDEO_TESTS: 1
