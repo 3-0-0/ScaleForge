@@ -6,6 +6,12 @@ readme = "README.md"
 license = {text = "MIT"}
 authors = [{name = "ScaleForge Team", email = "openhands@all-hands.dev"}]
 requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.7",
+    "PyYAML>=6.0",
+    "click>=8.1.7",
+    "Pillow>=10.3.0",
+]
 
 [project.urls]
 Homepage = "https://example.com/scaleforge"
@@ -17,14 +23,6 @@ where = ["src"]
 requires = ["setuptools>=67", "wheel"]
 build-backend = "setuptools.build_meta"
 
-dependencies = [
-    "pydantic>=2.7",
-    "PyYAML>=6.0",
-    "click>=8.1.7",
-    "Pillow>=10.3.0",
-    "hypothesis>=6.100.0",
-]
-
 [project.scripts]
 scaleforge = "scaleforge.cli.main:cli"
 
@@ -32,12 +30,12 @@ scaleforge = "scaleforge.cli.main:cli"
 # Runtime heavy extras
 torch = ["torch", "realesrgan"]
 
-# Development extras
+# Development extras (includes test/lint)
 dev = [
     "ruff>=0.4",
-    "pytest>=8", 
+    "pytest>=8",
     "pytest-cov>=4",
-    "hypothesis>=6.100.0"
+    "hypothesis>=6.100.0",
+    "pytest-mock>=3.0",
+    "ipython>=8.0",
 ]
-lint = ["ruff>=0.4"]
-test = ["pytest>=8", "pytest-cov>=4"]
