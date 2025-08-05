@@ -9,7 +9,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-import torch
+try:
+    import torch
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+    logger.debug("PyTorch not available - Vulkan/CPU backends only")
 
 logger = logging.getLogger(__name__)
 
@@ -23,16 +28,22 @@ class DeviceCapabilities:
 
 def detect_capabilities() -> DeviceCapabilities:
     """Detect current system's capabilities."""
-    if torch.cuda.is_available():
-        return _detect_cuda_capabilities()
-    elif getattr(torch.backends, 'mps', None) and torch.backends.mps.is_available():
-        return _detect_mps_capabilities()
-    elif torch.backends.vulkan.is_available():
-        return _detect_vulkan_capabilities()
+    if TORCH_AVAILABLE:
+        if torch.cuda.is_available():
+            return _detect_cuda_capabilities()
+        elif getattr(torch.backends, 'mps', None) and torch.backends.mps.is_available():
+            return _detect_mps_capabilities()
+        elif torch.backends.vulkan.is_available():
+            return _detect_vulkan_capabilities()
+    
+    # Fallback to CPU if Torch not available or no GPU detected
     return _detect_cpu_capabilities()
 
 def _detect_cuda_capabilities() -> DeviceCapabilities:
     """Detect CUDA GPU capabilities."""
+    if not TORCH_AVAILABLE:
+        return _detect_cpu_capabilities()
+        
     vram_mb = torch.cuda.get_device_properties(0).total_memory // (1024**2)
     return DeviceCapabilities(
         device_type='cuda',
@@ -43,6 +54,9 @@ def _detect_cuda_capabilities() -> DeviceCapabilities:
 
 def _detect_mps_capabilities() -> DeviceCapabilities:
     """Detect MPS (Apple Silicon) capabilities."""
+    if not TORCH_AVAILABLE:
+        return _detect_cpu_capabilities()
+        
     return DeviceCapabilities(
         device_type='mps',
         vram_mb=16384,  # Conservative estimate
@@ -52,6 +66,9 @@ def _detect_mps_capabilities() -> DeviceCapabilities:
 
 def _detect_vulkan_capabilities() -> DeviceCapabilities:
     """Detect Vulkan capabilities."""
+    if not TORCH_AVAILABLE:
+        return _detect_cpu_capabilities()
+        
     return DeviceCapabilities(
         device_type='vulkan',
         vram_mb=4096,  # Conservative estimate
