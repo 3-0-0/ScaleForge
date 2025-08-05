@@ -5,3 +5,7 @@ ruff>=0.4
 [test]
 pytest>=8
 pytest-cov>=4
+
+[torch]
+torch
+realesrgan

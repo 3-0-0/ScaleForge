@@ -11,6 +11,7 @@ import os
 
 from scaleforge.backend.base import Backend, VulkanBackend
 from scaleforge.backend.torch_backend import TorchBackend
+from scaleforge.capabilities import get_caps
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +28,10 @@ def _env_override() -> str | None:
 
 def get_backend() -> Backend:
     """Return a Backend instance following the selection rules."""
-
     use_stub = os.getenv("SF_STUB_UPSCALE", "0") == "1"
-
     override = _env_override()
+
+    # Handle explicit overrides first
     if override in {"torch", "pytorch"}:
         logger.info("Backend forced to Torch (override)")
         return TorchBackend(stub=use_stub)
@@ -38,14 +39,19 @@ def get_backend() -> Backend:
         logger.info("Backend forced to Vulkan (override)")
         return VulkanBackend()
 
-    try:
-        import torch  # noqa: WPS433 (dynamic import)
+    # Use capability-aware selection
+    caps = get_caps()
+    logger.info(f"Detected capabilities: {caps}")
 
-        if torch.cuda.is_available():
-            logger.info("Detected CUDA – using Torch backend")
-        else:
-            logger.info("Torch CPU – using Torch backend")
+    if caps.device_type == "cuda":
+        logger.info("Using CUDA-optimized Torch backend")
         return TorchBackend(stub=use_stub)
-    except ModuleNotFoundError:  # pragma: no cover – unlikely
-        logger.warning("PyTorch not installed – defaulting to Vulkan stub")
+    elif caps.device_type == "mps":
+        logger.info("Using MPS-optimized Torch backend")
+        return TorchBackend(stub=use_stub)
+    elif caps.device_type == "vulkan":
+        logger.info("Using Vulkan backend")
         return VulkanBackend()
+    else:
+        logger.info("Using CPU fallback backend")
+        return TorchBackend(stub=use_stub)

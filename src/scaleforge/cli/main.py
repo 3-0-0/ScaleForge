@@ -15,6 +15,7 @@ from scaleforge.config.loader import load_config
 from scaleforge.db.models import init_db
 from scaleforge.backend.selector import get_backend
 from scaleforge.pipeline.queue import JobQueue
+from scaleforge.capabilities import get_caps
 
 cfg = load_config()
 init_db(cfg.database_path)
@@ -29,6 +30,13 @@ class PlanItem(BaseModel):
 @click.group()
 def cli():
     """ScaleForge CLI."""
+
+
+@cli.command()
+def caps():
+    """Print detected hardware capabilities."""
+    caps = get_caps()
+    click.echo(json.dumps(caps.__dict__, indent=2))
 
 
 @cli.command()
