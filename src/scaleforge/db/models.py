@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator, Any, Mapping
 
@@ -65,9 +65,36 @@ def get_conn(db_path: Path) -> Iterator[sqlite3.Connection]:
         conn.close()
 
 
-def init_db(db_path: Path):
+SCHEMA_VERSION = 1
+
+def check_schema(conn: sqlite3.Connection) -> bool:
+    """Check if schema matches current version."""
+    try:
+        conn.execute("SELECT attempts FROM jobs LIMIT 1")
+        return True
+    except sqlite3.OperationalError:
+        return False
+
+def reset_db(db_path: Path):
+    """Delete and recreate database."""
+    db_path.unlink(missing_ok=True)
+    init_db(db_path)
+
+def init_db(db_path: Path, force: bool = False):
+    """Initialize or upgrade database schema."""
+    db_exists = db_path.exists()
+    
     with get_conn(db_path) as conn:
+        if db_exists and not force:
+            if check_schema(conn):
+                return  # Schema is current
+            print("Warning: Database schema outdated. Attempting upgrade...")
+            
+        # Create or recreate schema
         conn.executescript(DB_SCHEMA)
+        
+        # Add version tracking
+        conn.execute("PRAGMA user_version = ?", (SCHEMA_VERSION,))
         conn.commit()
 
 
@@ -77,8 +104,8 @@ class Job(BaseModel):
     hash: str
     status: str = Field(default=JobStatus.PENDING)
     error: str | None = None
-    created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
-    updated_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     attempts: int = 0
     extra: str | None = None
 
@@ -96,7 +123,7 @@ class Job(BaseModel):
         row = cur.fetchone()
         if row:
             return None  # skip duplicate
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         job_data = (
             data["src_path"],
             data["hash"],
@@ -132,7 +159,7 @@ class Job(BaseModel):
 
     def set_status(self, conn: sqlite3.Connection, status: str, error: str | None = None):
         self.status = status
-        self.updated_at = datetime.utcnow().isoformat()
+        self.updated_at = datetime.now(timezone.utc).isoformat()
         if error:
             self.error = error
         if status == JobStatus.FAILED:
