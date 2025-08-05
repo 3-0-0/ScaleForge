@@ -9,12 +9,15 @@ from pathlib import Path
 from typing import List
 
 import click
+import logging
 from pydantic import BaseModel
 
 from scaleforge.config.loader import load_config
 from scaleforge.db.models import init_db
 from scaleforge.backend.selector import get_backend
 from scaleforge.pipeline.queue import JobQueue
+
+logger = logging.getLogger(__name__)
 
 cfg = load_config()
 init_db(cfg.database_path)
@@ -95,10 +98,11 @@ def run(inputs: List[Path], inputs_fallback: tuple[Path], dry_run: bool,
         click.echo(json.dumps([t.model_dump() for t in targets], indent=2))
         sys.exit(0)
 
-    backend = get_backend(model_name=model)
+    backend = get_backend()
+    logger.info(f"Backend initialized: {type(backend).__name__}")
     jq = JobQueue(cfg.database_path, backend, concurrency)
     if not resume:
-        jq.enqueue(targets)
+        jq.enqueue([t.src for t in targets])
     asyncio.run(jq.run(resume=resume))
 
 
