@@ -6,15 +6,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-      - run: pip install -e .
-      - run: pip install -e '.[lint,test]'
+      - run: pip install -e '.[dev,lint,test]'
+      - run: pip freeze > requirements_ci_runtime.txt
       - run: ruff check .
       - run: pytest --cov=scaleforge
       - uses: codecov/codecov-action@v4
@@ -23,3 +23,7 @@ jobs:
         with:
           name: dist-${{ matrix.python-version }}
           path: dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ci-requirements-${{ matrix.python-version }}
+          path: requirements_ci_runtime.txt
