@@ -32,33 +32,41 @@ def cli():
 
 
 @cli.command()
-@click.argument("inputs", nargs=-1, type=click.Path(path_type=Path), 
-               help="Input files/directories to process (supports glob patterns)")
-@click.option("--dry-run", is_flag=True, 
-             help="Preview processing plan without executing")
-@click.option("--output", "out_dir", type=click.Path(path_type=Path), 
+@click.option("--input", "inputs", type=click.Path(path_type=Path), 
+              multiple=True, help="Input file(s)/directory(ies) to process")
+@click.argument("inputs_fallback", nargs=-1, type=click.Path(path_type=Path),
+               required=False)
+@click.option("--output", "out_dir", type=click.Path(path_type=Path),
              default="${APP_ROOT}/outputs", show_default=True,
-             help="Output directory for processed files")
+             help="Output directory path for processed files")
+@click.option("--dry-run", is_flag=True,
+             help="Generate processing plan without execution")
 @click.option("--scale", type=int, default=2, show_default=True,
-             help="Upscaling factor (2x, 4x, etc.)")
+             help="Upscale factor (2=2x, 4=4x etc.)")
 @click.option("--model", default="realesrgan-x4plus", show_default=True,
-             help="AI model to use for upscaling")
-@click.option("-j", "--concurrency", default=1, show_default=True, 
-             help="Max parallel upscaling jobs")
+             help="AI model: realesrgan-x4plus|realesrgan-x4plus-anime")
+@click.option("-j", "--concurrency", default=1, show_default=True,
+             help="Max parallel jobs (CPU/GPU dependent)")
 @click.option("--resume", is_flag=True,
-             help="Continue previous session (skips completed jobs)")
+             help="Resume previous incomplete jobs")
 @click.option("--reset-db", is_flag=True,
-             help="Wipe and recreate job tracking database")
+             help="Reset job tracking database (use with caution)")
 
-def run(inputs: List[Path], dry_run: bool, out_dir: Path, scale: int, model: str,
-       concurrency: int, resume: bool, reset_db: bool):
+def run(inputs: List[Path], inputs_fallback: tuple[Path], dry_run: bool, 
+       out_dir: Path, scale: int, model: str, concurrency: int, 
+       resume: bool, reset_db: bool):
     """Upscale images using AI models.
     
     Examples:
-      scaleforge run input.jpg --output ./results
-      scaleforge run ./photos --scale 4 -j 4
-      scaleforge run *.png --model realesrgan-x4plus
+      scaleforge run --input photo.jpg --output ./results
+      scaleforge run --input ./photos --scale 4 -j 4
+      scaleforge run *.png --model realesrgan-x4plus-anime
+      scaleforge run --input file1.jpg file2.jpg  # Alternative syntax
     """
+    # Combine --input and positional args
+    all_inputs = list(inputs) + list(inputs_fallback)
+    if not all_inputs:
+        raise click.UsageError("No input files specified")
     if reset_db:
         from scaleforge.db.models import reset_db
         reset_db(cfg.database_path)

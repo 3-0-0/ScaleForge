@@ -94,7 +94,7 @@ def init_db(db_path: Path, force: bool = False):
         conn.executescript(DB_SCHEMA)
         
         # Add version tracking
-        conn.execute("PRAGMA user_version = ?", (SCHEMA_VERSION,))
+        conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         conn.commit()
 
 
