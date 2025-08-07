@@ -17,8 +17,11 @@ jobs:
       - run: python --version
       - run: uname -a
       - run: pip install -e '.[dev]'
-      - run: pip install --upgrade setuptools>=77.0.0
+      - run: python -m pip install --upgrade pip setuptools>=77.0.0 build wheel
+      - run: python -m pip check
       - run: pip list
+      - run: python -c "import sys; print(sys.path)"
+      - run: python -c "import pkg_resources; print(pkg_resources.working_set)"
 
       - run: pip freeze > requirements_ci_runtime.txt
       - run: ruff check .
