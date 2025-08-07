@@ -17,6 +17,7 @@ jobs:
       - run: python --version
       - run: uname -a
       - run: pip install -e '.[dev]'
+      - run: pip install --upgrade setuptools>=77.0.0
       - run: pip list
 
       - run: pip freeze > requirements_ci_runtime.txt
