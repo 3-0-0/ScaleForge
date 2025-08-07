@@ -1,0 +1,29 @@
+
+name: Android Build (Stub)
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'android_app/**', '.github/workflows/android.yml' ]
+  pull_request:
+    branches: [ main ]
+    paths: [ 'android_app/**', '.github/workflows/android.yml' ]
+
+jobs:
+  android-build:
+    if: false # Disabled until Android implementation is ready
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    # TODO: Add buildozer/android setup when implemented
+    - name: Log placeholder
+      run: echo "Android build pipeline will be implemented here"
+      
+    # Future steps needed:
+    # - Install buildozer and dependencies
+    # - Configure buildozer.spec
+    # - Build debug APK
+    # - Upload artifact
