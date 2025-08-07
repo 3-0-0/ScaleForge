@@ -3,7 +3,8 @@ name = "scaleforge"
 version = "0.1.0"
 description = "ScaleForge – portable image upscaler powered by Real-ESRGAN"
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{name = "ScaleForge Team", email = "openhands@all-hands.dev"}]
 requires-python = ">=3.10"
 dependencies = [
@@ -16,15 +17,13 @@ dependencies = [
 [project.urls]
 Homepage = "https://example.com/scaleforge"
 
-[tool.setuptools.packages.find]
-where = ["src"]
-
 [build-system]
 requires = [
     "setuptools>=67",
     "wheel>=0.40.0",
     "setuptools_scm>=8.0",
-    "setuptools_scm_git_archive>=1.1"
+    "setuptools_scm_git_archive>=1.1",
+    "build>=1.0.0"
 ]
 build-backend = "setuptools.build_meta"
 
@@ -35,7 +34,7 @@ zip-safe = false
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["scaleforge*"]
-exclude = ["tests*"]
+exclude = ["tests*", "*__pycache__*"]
 
 [project.scripts]
 scaleforge = "scaleforge.cli.main:cli"
