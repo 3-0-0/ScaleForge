@@ -3,7 +3,7 @@ name = "scaleforge"
 version = "0.4.0-alpha"
 description = "ScaleForge – portable image upscaler powered by Real-ESRGAN"
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 authors = [{name = "ScaleForge Team", email = "openhands@all-hands.dev"}]
 requires-python = ">=3.10"
 dependencies = [
