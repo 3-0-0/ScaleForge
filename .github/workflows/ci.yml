@@ -41,14 +41,25 @@ jobs:
       - name: Build CLI EXE (Windows only)
         if: runner.os == 'Windows'
         run: |
-          # Configure long path support
+          # System configuration
           git config --system core.longpaths true
-          # Explicit PyInstaller install
+          
+          # Dependencies
+          py -m pip install --upgrade pip
+          py -m pip install torch==2.2.2+cpu torchvision==0.17.2+cpu --index-url https://download.pytorch.org/whl/cpu
           py -m pip install pyinstaller==6.6
-          # Build from repo root with proper paths
-          cd src
+          
+          # Build with absolute paths
+          $buildPath = Join-Path $pwd "src"
+          cd $buildPath
           py -m PyInstaller -n ScaleForge -F -c --paths=. scaleforge\cli\main.py
-          cd ..
+          
+          # Verify artifact exists
+          $artifactPath = Join-Path $buildPath "dist\ScaleForge.exe"
+          if (!(Test-Path $artifactPath)) {
+              Write-Error "Build failed - executable not found at $artifactPath"
+              exit 1
+          }
 
       - uses: actions/upload-artifact@v4
         if: runner.os == 'Windows'
