@@ -1,6 +1,6 @@
 [project]
 name = "scaleforge"
-version = "0.1.0"
+version = "0.4.0-alpha"
 description = "ScaleForge – portable image upscaler powered by Real-ESRGAN"
 readme = "README.md"
 license = {text = "MIT"}
@@ -27,8 +27,11 @@ build-backend = "setuptools.build_meta"
 scaleforge = "scaleforge.cli.main:cli"
 
 [project.optional-dependencies]
+gui = [
+    "kivy>=2.3.0"
+]
 # Runtime heavy extras
-torch = ["torch", "realesrgan"]
+torch = ["torch>=1.13.1", "realesrgan==0.2.5.0", "basicsr==1.4.2"]
 
 # Development extras (includes test/lint)
 dev = [

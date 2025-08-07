@@ -33,3 +33,28 @@ jobs:
         with:
           name: ci-requirements-${{ matrix.python-version }}
           path: requirements_ci_runtime.txt
+
+  e2e-test-upscale:
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          pip install -e .
+          pip install pillow
+      - name: Run end-to-end test
+        run: |
+          mkdir -p assets output
+          chmod +x scripts/test-upscale.sh
+          ./scripts/test-upscale.sh
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: upscale-results
+          path: output/

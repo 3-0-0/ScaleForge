@@ -10,9 +10,46 @@ from typing import Iterator, Any, Mapping
 
 from pydantic import BaseModel, Field
 
-DB_SCHEMA = """
+SCHEMA_VERSION = 1
+
+def init_db(conn: sqlite3.Connection):
+    """Initialize database with proper schema versioning."""
+    cursor = conn.cursor()
+    
+    # Check if schema_info exists
+    cursor.execute("""
+        SELECT name FROM sqlite_master 
+        WHERE type='table' AND name='schema_info'
+    """)
+    
+    if not cursor.fetchone():
+        # Fresh database - create all tables
+        cursor.executescript(DB_SCHEMA)
+        cursor.execute("""
+            INSERT INTO schema_info (version, updated_at)
+            VALUES (?, ?)
+        """, (SCHEMA_VERSION, datetime.now(timezone.utc).isoformat()))
+        conn.commit()
+    else:
+        # Existing database - check version
+        cursor.execute("SELECT version FROM schema_info")
+        db_version = cursor.fetchone()[0]
+        if db_version < SCHEMA_VERSION:
+            # TODO: Implement migrations when needed
+            cursor.execute("""
+                UPDATE schema_info 
+                SET version = ?, updated_at = ?
+            """, (SCHEMA_VERSION, datetime.now(timezone.utc).isoformat()))
+            conn.commit()
+
+DB_SCHEMA = f"""
 PRAGMA journal_mode=WAL;
 PRAGMA busy_timeout=5000;
+
+CREATE TABLE IF NOT EXISTS schema_info (
+    version INTEGER PRIMARY KEY,
+    updated_at TEXT NOT NULL
+);
 
 CREATE TABLE IF NOT EXISTS jobs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,9 +94,17 @@ class JobStatus:
 
 
 @contextmanager
-def get_conn(db_path: Path) -> Iterator[sqlite3.Connection]:
+def get_conn(db_path: Path | sqlite3.Connection) -> Iterator[sqlite3.Connection]:
+    if isinstance(db_path, sqlite3.Connection):
+        if not check_schema(db_path):
+            init_db(db_path)
+        yield db_path
+        return
+        
     conn = sqlite3.connect(db_path)
     try:
+        if not check_schema(conn):
+            init_db(conn)
         yield conn
     finally:
         conn.close()
@@ -78,24 +123,22 @@ def check_schema(conn: sqlite3.Connection) -> bool:
 def reset_db(db_path: Path):
     """Delete and recreate database."""
     db_path.unlink(missing_ok=True)
-    init_db(db_path)
-
-def init_db(db_path: Path, force: bool = False):
-    """Initialize or upgrade database schema."""
-    db_exists = db_path.exists()
-    
     with get_conn(db_path) as conn:
-        if db_exists and not force:
-            if check_schema(conn):
-                return  # Schema is current
-            print("Warning: Database schema outdated. Attempting upgrade...")
-            
-        # Create or recreate schema
-        conn.executescript(DB_SCHEMA)
+        init_db(conn, force=True)
+
+def init_db(conn: sqlite3.Connection, force: bool = False):
+    """Initialize or upgrade database schema."""
+    if not force and check_schema(conn):
+        return  # Schema is current
         
-        # Add version tracking
-        conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
-        conn.commit()
+    print("Initializing/upgrading database schema...")
+    
+    # Create or recreate schema
+    conn.executescript(DB_SCHEMA)
+    
+    # Add version tracking
+    conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+    conn.commit()
 
 
 class Job(BaseModel):
