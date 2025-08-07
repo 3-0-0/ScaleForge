@@ -10,6 +10,7 @@ src/scaleforge/backend/__init__.py
 src/scaleforge/backend/base.py
 src/scaleforge/backend/selector.py
 src/scaleforge/backend/torch_backend.py
+src/scaleforge/backend/vulkan_backend.py
 src/scaleforge/cli/__init__.py
 src/scaleforge/cli/main.py
 src/scaleforge/config/loader.py
@@ -20,3 +21,4 @@ src/scaleforge/pipeline/queue.py
 src/scaleforge/utils/hash.py
 tests/test_hash_utils.py
 tests/test_job_state.py
+tests/test_torch_backend.py

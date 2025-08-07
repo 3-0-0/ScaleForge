@@ -1,14 +1,23 @@
 Metadata-Version: 2.4
 Name: scaleforge
-Version: 0.0.1
+Version: 0.1.0
 Summary: ScaleForge – portable image upscaler powered by Real-ESRGAN
 Author-email: ScaleForge Team <openhands@all-hands.dev>
 License: MIT
 Project-URL: Homepage, https://example.com/scaleforge
-Requires-Python: >=3.12
+Requires-Python: >=3.10
 Description-Content-Type: text/markdown
-Provides-Extra: lint
-Requires-Dist: ruff>=0.4; extra == "lint"
-Provides-Extra: test
-Requires-Dist: pytest>=8; extra == "test"
-Requires-Dist: pytest-cov>=4; extra == "test"
+Requires-Dist: pydantic>=2.7
+Requires-Dist: PyYAML>=6.0
+Requires-Dist: click>=8.1.7
+Requires-Dist: Pillow>=10.3.0
+Provides-Extra: torch
+Requires-Dist: torch; extra == "torch"
+Requires-Dist: realesrgan; extra == "torch"
+Provides-Extra: dev
+Requires-Dist: ruff>=0.4; extra == "dev"
+Requires-Dist: pytest>=8; extra == "dev"
+Requires-Dist: pytest-cov>=4; extra == "dev"
+Requires-Dist: hypothesis>=6.100.0; extra == "dev"
+Requires-Dist: pytest-mock>=3.0; extra == "dev"
+Requires-Dist: ipython>=8.0; extra == "dev"
