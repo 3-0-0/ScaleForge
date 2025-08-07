@@ -1,11 +1,13 @@
+
 name: CI
 on: [push, pull_request]
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [ubuntu-latest, windows-latest]
         python-version: ["3.12"]
     steps:
       - uses: actions/checkout@v4
@@ -29,11 +31,28 @@ jobs:
       - uses: codecov/codecov-action@v4
         continue-on-error: true
       - run: python -m build
+
+      - name: Install PyTorch CPU (Windows only)
+        if: runner.os == 'Windows'
+        run: |
+          pip install torch==2.2.2+cpu torchvision==0.17.2+cpu --index-url https://download.pytorch.org/whl/cpu
+          pip install pyinstaller==6.6
+
+      - name: Build CLI EXE (Windows only)
+        if: runner.os == 'Windows'
+        run: |
+          pyinstaller -n ScaleForge -F -c -p src scaleforge/cli/main.py
+
       - uses: actions/upload-artifact@v4
         with:
-          name: dist-${{ matrix.python-version }}
+          name: dist-${{ matrix.os }}-${{ matrix.python-version }}
           path: dist/*
       - uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows'
         with:
-          name: ci-requirements-${{ matrix.python-version }}
+          name: ScaleForge-win-x64
+          path: dist/ScaleForge.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ci-requirements-${{ matrix.os }}-${{ matrix.python-version }}
           path: requirements_ci_runtime.txt
