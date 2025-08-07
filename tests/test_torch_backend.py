@@ -41,10 +41,10 @@ def stub_heavy_deps(tmp_path, monkeypatch):
     monkeypatch.setenv("SCALEFORGE_CACHE", str(cache_dir))
 
     # Patch expected checksum to match dummy file
-    from scaleforge.backend import torch_backend as tb
+    from scaleforge.backend.torch_backend import TorchBackend
 
     monkeypatch.setattr(
-        tb.TorchRealESRGANBackend,
+        TorchBackend,
         "_MODEL_SHA256",
         hashlib.sha256(b"dummy").hexdigest(),
         raising=False,
@@ -54,13 +54,13 @@ def stub_heavy_deps(tmp_path, monkeypatch):
 def test_upscale_roundtrip(tmp_path):
     """Backend should save an output file without heavy deps."""
 
-    from scaleforge.backend.torch_backend import TorchRealESRGANBackend
+    from scaleforge.backend.torch_backend import TorchBackend
 
     src = tmp_path / "in.png"
     dst = tmp_path / "out.png"
     Image.new("RGB", (8, 8), "white").save(src)
 
-    backend = TorchRealESRGANBackend(prefer_gpu=False)
+    backend = TorchBackend(stub=True)
     asyncio.run(backend.upscale(src, dst))
 
     assert dst.exists()
