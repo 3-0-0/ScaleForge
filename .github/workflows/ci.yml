@@ -41,17 +41,13 @@ jobs:
       - name: Build CLI EXE (Windows only)
         if: runner.os == 'Windows'
         run: |
-          pyinstaller -n ScaleForge -F -c -p src src\scaleforge\cli\main.py
+          cd src && py -m PyInstaller -n ScaleForge -F -c --paths=. scaleforge\cli\main.py
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: dist-${{ matrix.os }}-${{ matrix.python-version }}
-          path: dist/*
       - uses: actions/upload-artifact@v4
         if: runner.os == 'Windows'
         with:
           name: ScaleForge-win-x64
-          path: dist/ScaleForge.exe
+          path: src\dist\ScaleForge.exe
       - uses: actions/upload-artifact@v4
         with:
           name: ci-requirements-${{ matrix.os }}-${{ matrix.python-version }}
