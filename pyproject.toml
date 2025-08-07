@@ -20,8 +20,22 @@ Homepage = "https://example.com/scaleforge"
 where = ["src"]
 
 [build-system]
-requires = ["setuptools>=67", "wheel"]
+requires = [
+    "setuptools>=67",
+    "wheel>=0.40.0",
+    "setuptools_scm>=8.0",
+    "setuptools_scm_git_archive>=1.1"
+]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true
+zip-safe = false
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["scaleforge*"]
+exclude = ["tests*"]
 
 [project.scripts]
 scaleforge = "scaleforge.cli.main:cli"
