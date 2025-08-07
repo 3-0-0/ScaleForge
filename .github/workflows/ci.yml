@@ -38,26 +38,26 @@ jobs:
           pip install torch==2.2.2+cpu torchvision==0.17.2+cpu --index-url https://download.pytorch.org/whl/cpu
           pip install pyinstaller==6.6
 
-      - name: Build CLI EXE (Windows only) - CI Test Run
+      - name: Build CLI EXE (Windows only) - Final Fix Attempt
         if: runner.os == 'Windows'
         run: |
           # System configuration
           git config --system core.longpaths true
           
-          # Dependencies
+          # Dependencies (explicit versions)
           py -m pip install --upgrade pip
-          py -m pip install torch==2.2.2+cpu torchvision==0.17.2+cpu --index-url https://download.pytorch.org/whl/cpu
+          py -m pip install torch==2.2.2+cpu torchvision==0.17.2+cpu --index-url "https://download.pytorch.org/whl/cpu"
           py -m pip install pyinstaller==6.6
           
           # Build with absolute paths
-          $buildPath = Join-Path $pwd "src"
-          cd $buildPath
+          $buildDir = Join-Path $pwd "src"
+          cd $buildDir
           py -m PyInstaller -n ScaleForge -F -c --paths=. scaleforge\cli\main.py
           
-          # Verify artifact exists
-          $artifactPath = Join-Path $buildPath "dist\ScaleForge.exe"
-          if (!(Test-Path $artifactPath)) {
-              Write-Error "Build failed - executable not found at $artifactPath"
+          # Verify artifact
+          $artifact = Join-Path $buildDir "dist\ScaleForge.exe" 
+          if (!(Test-Path $artifact)) {
+              Write-Error "Build failed - executable missing at $artifact"
               exit 1
           }
 
