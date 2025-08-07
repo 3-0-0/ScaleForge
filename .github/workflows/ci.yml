@@ -38,7 +38,7 @@ jobs:
           pip install torch==2.2.2+cpu torchvision==0.17.2+cpu --index-url https://download.pytorch.org/whl/cpu
           pip install pyinstaller==6.6
 
-      - name: Build CLI EXE (Windows only)
+      - name: Build CLI EXE (Windows only) - CI Test Run
         if: runner.os == 'Windows'
         run: |
           # System configuration
