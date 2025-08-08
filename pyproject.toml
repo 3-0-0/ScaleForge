@@ -36,7 +36,8 @@ torch = [
     "torch>=2.0.0+cpu; sys_platform == 'win32'",
     "realesrgan==0.2.5.0", 
     "basicsr==1.4.2",
-    "xformers>=0.0.22; sys_platform != 'win32'"
+    "xformers>=0.0.22; sys_platform != 'win32'",
+    "charset-normalizer<3.0.0; python_version >= '3.12'"
 ]
 
 # Development extras (includes test/lint)
