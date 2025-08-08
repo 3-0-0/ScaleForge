@@ -85,6 +85,45 @@ def gui():
     """Launch the ScaleForge GUI."""
     ScaleForgeApp().run()
 
+@cli.command()
+@click.option('--debug', is_flag=True, help='Show detailed backend detection info')
+@click.option('--probe', is_flag=True, help='Force fresh GPU capability detection')
+def detect_backend(debug, probe):
+    """Detect and display GPU backend capabilities."""
+    from scaleforge.backend import detect_gpu_caps, load_caps
+    from scaleforge.config.loader import load_config
+    from datetime import datetime
+    import json
+    
+    cfg = load_config()
+    app_root = Path(str(cfg.model_dir)).parent
+    
+    if probe:
+        caps = detect_gpu_caps(app_root, force_probe=True)
+        source = "probed"
+    else:
+        caps = load_caps(app_root) or detect_gpu_caps(app_root, force_probe=True)
+        source = "cached" if not probe else "probed"
+    
+    if debug:
+        click.echo(json.dumps({
+            "vendor": caps["vendor"],
+            "backend": caps["backend"],
+            "max_tile_size": caps["max_tile_size"],
+            "max_megapixels": caps["max_megapixels"],
+            "detected_at": caps["detected_at"],
+            "cache_path": str(app_root / "gpu_caps.json"),
+            "source": source
+        }, indent=2))
+    else:
+        click.echo(
+            f"backend={caps['backend']} "
+            f"vendor={caps['vendor']} "
+            f"tile={caps['max_tile_size']} "
+            f"mpx={caps['max_megapixels']:.1f} "
+            f"({source})"
+        )
+
 logger = logging.getLogger(__name__)
 
 SUPPORTED_EXTENSIONS = {
