@@ -20,12 +20,16 @@ class JobQueue:
     def __init__(self, db_path: Path, backend: Backend, concurrency: int = 1):
         self.db_path = Path(db_path)
         self.backend = backend
-        self.concurrency = max(1, int(concurrency))
+        self.concurrency = max(1, int(concurrency or 1))
 
     # ------------------------------------------------------------------
-    def enqueue(self, inputs: Iterable[Path]):
+    def enqueue(self, inputs: Iterable[Path], model: str = None, scale: int = None):
         """Add new source files to the *jobs* table if not present."""
-        params = {"backend": self.backend.name}
+        params = {
+            "backend": self.backend.name,
+            "model": model,
+            "scale": scale or 2  # Default to 2x if not specified
+        }
         with get_conn(self.db_path) as conn:
             for p in inputs:
                 p = Path(p)
@@ -39,6 +43,10 @@ class JobQueue:
                         {
                             "src_path": str(img),
                             "hash": hash_params(img, params),
+                            "metadata": {
+                                "model": model,
+                                "scale": scale
+                            }
                         },
                     )
 
