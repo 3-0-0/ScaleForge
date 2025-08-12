@@ -223,7 +223,7 @@ _We welcome feedback, bug reports, and pull requests from the broader community.
 ## 💡 Inspiration
 - [**NASA / JWST Wallpapers – Webb Telescope**](https://webbtelescope.org/resource-gallery/images)  
 - [**NASA / JWST Wallpapers – Flickr**](https://www.flickr.com/photos/nasawebbtelescope/)  
-  The beauty of the cosmos inspired the first use case that led to the creation of ScaleForge. :contentReference[oaicite:8]{index=8}
+  The beauty of the cosmos inspired the first use case that led to the creation of ScaleForge.
 
 
 
