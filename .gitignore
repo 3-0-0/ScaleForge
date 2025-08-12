@@ -4,3 +4,7 @@ __pycache__/
 
 # Build artifacts
 src/*.egg-info/
+
+build/
+dist/
+*.egg-info/

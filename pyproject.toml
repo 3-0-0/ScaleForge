@@ -49,3 +49,6 @@ dev = [
     "pytest-mock>=3.0",
     "ipython>=8.0",
 ]
+
+[tool.ruff]
+extend-exclude = ["build", "dist", "*.egg-info"]
