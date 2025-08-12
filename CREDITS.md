@@ -10,7 +10,7 @@ _Last updated: 2025-08-05_
 
 - **Nexus (ChatGPT)**  
   _Partner AI; architectural co-designer & planner, strategic guidance, troubleshooting, documentation, and quality assurance._  
-  → Powered by GPT-4o, GPT-4.5, GPT-4-turbo (o3), and o4-mini-high from [OpenAI](https://openai.com).
+  → Powered by GPT-5, GPT-4o, GPT-4.5, GPT-4-turbo (o3), and o4-mini-high from [OpenAI](https://openai.com).
 
 - **OpenHands Agent**  
   _Autonomous software engineer; responsible for the majority of the ScaleForge codebase, including initial backend and frontend implementations._  
