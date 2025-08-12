@@ -165,7 +165,7 @@ Issues and PRs welcome. Please:
 
 ---
 
-## Credits
+# Credits
 
 ## 🧠 Core Contributors
 
@@ -184,7 +184,7 @@ Issues and PRs welcome. Please:
   _Auxiliary agent used to reduce compute costs during development._  
   → Powered by [DeepSeek-Coder 1.5](https://github.com/deepseek-ai/DeepSeek-Coder), a distilled model trained on GPT-3.5 and GPT-4 via OpenAI API.
 
----
+
 
 ## ⚙️ Upstream Projects & Libraries
 
@@ -207,25 +207,25 @@ ScaleForge is made possible by the incredible open-source ecosystem. Huge thanks
 - [**mkdocs-material**](https://squidfunk.github.io/mkdocs-material/) – beautiful docs theme  
 - [**EditorConfig**](https://editorconfig.org/) – consistent coding styles across editors  
 
----
+
 
 ## 🤝 Community Contributions
 _We welcome feedback, bug reports, and pull requests from the broader community. Join us on GitHub to help improve ScaleForge!_
 
----
+
 
 ## 🌐 Project Resources
 - **GitHub Repository**: [ScaleForge on GitHub](https://github.com/3-0-0/scaleforge)  
 - **Documentation**: _(coming soon)_ :contentReference[oaicite:7]{index=7}
 
----
+
 
 ## 💡 Inspiration
 - [**NASA / JWST Wallpapers – Webb Telescope**](https://webbtelescope.org/resource-gallery/images)  
 - [**NASA / JWST Wallpapers – Flickr**](https://www.flickr.com/photos/nasawebbtelescope/)  
   The beauty of the cosmos inspired the first use case that led to the creation of ScaleForge. :contentReference[oaicite:8]{index=8}
 
----
+
 
 ## 🛠️ Infrastructure & CI/CD
 - [**GitHub Actions**](https://github.com/features/actions) – continuous integration and delivery
