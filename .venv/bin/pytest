@@ -1,4 +1,4 @@
-#!/root/ScaleForge/.venv/bin/python
+#!/workspace/ScaleForge/.venv/bin/python3.12
 import sys
 from pytest import console_main
 if __name__ == '__main__':

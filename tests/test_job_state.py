@@ -1,6 +1,6 @@
 import sqlite3
 
-from scaleforge.db.models import Job, JobStatus, init_db
+from scaleforge.db.models import Job, JobStatus
 from scaleforge.utils.hash import hash_params
 
 

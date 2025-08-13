@@ -5,19 +5,25 @@ from __future__ import annotations
 from importlib.metadata import version as get_version
 
 import asyncio
+import hashlib
 import json
+import logging
 import sys
 from pathlib import Path
 from typing import List
 
-from scaleforge.models.downloader import ModelDownloader
-from scaleforge.gui.app import ScaleForgeApp
-from scaleforge.db.models import get_conn
-
-
 import click
-import logging
+
 from pydantic import BaseModel
+
+from scaleforge.backend.selector import get_backend
+from scaleforge.cli.info import info as info_command
+from scaleforge.config.loader import load_config
+from scaleforge.db.models import get_conn, init_db
+from scaleforge.gui.app import ScaleForgeApp
+from scaleforge.models.downloader import ModelDownloader
+from scaleforge.pipeline.queue import JobQueue
+from .utils import print_status
 DEV_MODE = False  # Global dev mode flag
 
 @click.version_option(version=get_version('scaleforge'), message='ScaleForge %(version)s')
@@ -29,14 +35,6 @@ def cli(dev):
     DEV_MODE = dev
     if dev:
         click.echo("🛠️  Developer mode enabled")
-
-from scaleforge.config.loader import load_config
-from scaleforge.db.models import init_db
-from scaleforge.backend.selector import get_backend
-from scaleforge.pipeline.queue import JobQueue
-from scaleforge.cli.info import info as info_command
-
-from .utils import print_status
 
 
 @cli.group("model")
@@ -92,7 +90,6 @@ def detect_backend(debug, probe):
     """Detect and display GPU backend capabilities."""
     from scaleforge.backend import detect_gpu_caps, load_caps
     from scaleforge.config.loader import load_config
-    from datetime import datetime
     import json
     
     cfg = load_config()
@@ -212,7 +209,6 @@ def run(inputs: List[Path], inputs_fallback: tuple[Path], dry_run: bool,
         verbose: If True, show detailed processing information
         scale: Upscale factor (2=2x, 4=4x) or None for model default
     """
-    scale_int = int(scale) if scale else None
     # Track processing stats
     processed_files = 0
     success_count = 0

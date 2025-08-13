@@ -42,7 +42,7 @@ def init_db(conn: sqlite3.Connection):
             """, (SCHEMA_VERSION, datetime.now(timezone.utc).isoformat()))
             conn.commit()
 
-DB_SCHEMA = f"""
+DB_SCHEMA = """
 PRAGMA journal_mode=WAL;
 PRAGMA busy_timeout=5000;
 
@@ -124,20 +124,9 @@ def reset_db(db_path: Path):
     """Delete and recreate database."""
     db_path.unlink(missing_ok=True)
     with get_conn(db_path) as conn:
-        init_db(conn, force=True)
-
-def init_db(conn: sqlite3.Connection, force: bool = False):
-    """Initialize or upgrade database schema."""
-    if not force and check_schema(conn):
-        return  # Schema is current
-        
-    print("Initializing/upgrading database schema...")
-    
-    # Create or recreate schema
-    conn.executescript(DB_SCHEMA)
-    
-    # Add version tracking
-    conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        # Initialize with force=True to ensure fresh schema
+        conn.executescript(DB_SCHEMA)
+        conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     conn.commit()
 
 

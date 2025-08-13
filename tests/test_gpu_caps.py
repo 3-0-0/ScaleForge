@@ -6,6 +6,7 @@
 from unittest.mock import patch, MagicMock
 import pytest
 from datetime import datetime
+from click.testing import CliRunner
 
 from scaleforge.backend.detector import (
     detect_gpu_vendor,
@@ -105,9 +106,7 @@ def test_env_override(tmp_app_root, monkeypatch):
                 assert '"backend": "torch-cpu"' in output
                 assert '"source": "env"' in output
 
-from click.testing import CliRunner
-from unittest.mock import patch, MagicMock
-
+# These imports are already present at the top of the file
 def test_cli_detect_backend_smoke(monkeypatch, tmp_path):
     # Make APP_ROOT point at tmp dir
     monkeypatch.setenv("APP_ROOT", str(tmp_path))
