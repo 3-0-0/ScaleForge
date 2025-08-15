@@ -10,7 +10,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import click
 
@@ -22,6 +22,11 @@ from scaleforge.config.loader import load_config
 from scaleforge.db.models import get_conn, init_db
 from scaleforge.gui.app import ScaleForgeApp
 from scaleforge.models.downloader import ModelDownloader
+from scaleforge.models.registry import (
+    load_effective_registry,
+    load_registry_file,
+    validate_registry,
+)
 from scaleforge.pipeline.queue import JobQueue
 from .utils import print_status
 DEV_MODE = False  # Global dev mode flag
@@ -151,8 +156,41 @@ cli.add_command(model_command)
     Commands:
       run    - Process images with AI upscaling
       info   - List supported models and backends
+      registry - Registry management commands
     """
     pass
+
+@cli.group("registry")
+def registry():
+    """Registry commands."""
+    pass
+
+@registry.command("validate")
+@click.option("--path", "path_", type=click.Path(exists=True, dir_okay=False, path_type=Path), required=False, help="YAML or JSON registry file")
+def registry_validate(path_: Optional[Path]):
+    """
+    Validate a registry file or the effective registry (builtins + user).
+    Exit codes: 0 valid, 5 invalid, 2 file/parse error.
+    """
+    try:
+        data = load_registry_file(path_) if path_ else load_effective_registry()
+    except FileNotFoundError as e:
+        click.echo(str(e))
+        sys.exit(2)
+    except Exception as e:
+        click.echo(f"Parse error: {e}")
+        sys.exit(2)
+
+    ok, errs = validate_registry(data)
+    if ok:
+        n = len(data.get("models", []))
+        click.echo(f"Registry valid ({n} models).")
+        sys.exit(0)
+    else:
+        click.echo("Registry invalid:")
+        for msg in errs:
+            click.echo(f"- {msg}")
+        sys.exit(5)
 
 cli.add_command(info_command)
 
