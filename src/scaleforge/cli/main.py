@@ -16,18 +16,18 @@ import click
 
 from pydantic import BaseModel
 
-from scaleforge.backend.selector import get_backend
+# lazy-import in run()
 from scaleforge.cli.info import info as info_command
 from scaleforge.config.loader import load_config
 from scaleforge.db.models import get_conn, init_db
-from scaleforge.gui.app import ScaleForgeApp
-from scaleforge.models.downloader import ModelDownloader
+# lazy-import in gui()
+# lazy-import where needed
 from scaleforge.models.registry import (
     load_effective_registry,
     load_registry_file,
     validate_registry,
 )
-from scaleforge.pipeline.queue import JobQueue
+# lazy-import in run()
 from .utils import print_status
 DEV_MODE = False  # Global dev mode flag
 
@@ -38,6 +38,31 @@ def cli(dev):
     """ScaleForge command line interface."""
     global DEV_MODE
     DEV_MODE = dev
+
+@cli.command("detect-backend")
+@click.option('--debug', is_flag=True, help='Show detailed backend detection info')
+@click.option('--probe', is_flag=True, help='Force fresh GPU capability detection')
+def detect_backend(debug: bool, probe: bool) -> None:
+    """Detect and display GPU backend capabilities."""
+    from scaleforge.backend import detect_gpu_caps, load_caps
+    from scaleforge.config.loader import load_config
+    import json
+    
+    cfg = load_config()
+    app_root = Path(str(cfg.model_dir)).parent
+    
+    if probe:
+        caps = detect_gpu_caps(app_root, force_probe=True)
+        source = "probed"
+    else:
+        caps = load_caps(app_root) or detect_gpu_caps(app_root, force_probe=True)
+        source = "cached" if not probe else "probed"
+    
+    if debug:
+        click.echo(f"Backend detection results (source: {source}):")
+        click.echo(json.dumps(caps, indent=2))
+    else:
+        click.echo(f"Detected backend: {caps.get('backend', 'unknown')}")
     if dev:
         click.echo("🛠️  Developer mode enabled")
 
@@ -85,13 +110,14 @@ def model_hash(path: Path):
 
 @cli.command()
 def gui():
+    from scaleforge.gui.app import ScaleForgeApp  # lazy-import
     """Launch the ScaleForge GUI."""
     ScaleForgeApp().run()
 
-@cli.command()
+@cli.command("detect-backend")
 @click.option('--debug', is_flag=True, help='Show detailed backend detection info')
 @click.option('--probe', is_flag=True, help='Force fresh GPU capability detection')
-def detect_backend(debug, probe):
+def detect_backend(debug: bool, probe: bool) -> None:
     """Detect and display GPU backend capabilities."""
     from scaleforge.backend import detect_gpu_caps, load_caps
     from scaleforge.config.loader import load_config
@@ -106,6 +132,12 @@ def detect_backend(debug, probe):
     else:
         caps = load_caps(app_root) or detect_gpu_caps(app_root, force_probe=True)
         source = "cached" if not probe else "probed"
+    
+    if debug:
+        click.echo(f"Backend detection results (source: {source}):")
+        click.echo(json.dumps(caps, indent=2))
+    else:
+        click.echo(f"Detected backend: {caps.get('backend', 'unknown')}")
     
     if debug:
         click.echo(json.dumps({
@@ -138,8 +170,6 @@ def is_supported_image(path: Path) -> bool:
 
 cfg = load_config()
 # Initialize database on first connection
-with get_conn(cfg.database_path) as conn:
-    init_db(conn)
 
 
 @click.group()
@@ -237,10 +267,20 @@ Examples:
 @click.option("--scale", type=click.Choice(["2", "4"], case_sensitive=False),
              default=None,
              help="Upscale factor (2 or 4). Overrides model default.")
-def run(inputs: List[Path], inputs_fallback: tuple[Path], dry_run: bool, 
-       out_dir: Path, model: str, concurrency: int, 
-       resume: bool, reset_db: bool, verbose: bool, 
-       scale: str | None = None, force_backend: str | None = None):
+def run(
+    inputs: List[Path],
+    inputs_fallback: tuple[Path],
+    dry_run: bool,
+    out_dir: Path,
+    model: str,
+    concurrency: int,
+    reset_db: bool,
+    scale: Optional[str]
+):
+    # Lazy imports to avoid pulling torch/basicsr at CLI import time
+    from scaleforge.backend.selector import get_backend
+    from scaleforge.pipeline.queue import JobQueue
+    from scaleforge.models.downloader import ModelDownloader
     """Upscale images using AI models.
     
     Args:
@@ -280,7 +320,7 @@ def run(inputs: List[Path], inputs_fallback: tuple[Path], dry_run: bool,
 
     # Debug imports
     try:
-        from scaleforge.models.downloader import ModelDownloader
+        # lazy-import where needed
         click.echo("✅ ModelDownloader import successful") if verbose else None
     except ImportError as e:
         click.echo(f"❌ ModelDownloader import failed: {e}", err=True)

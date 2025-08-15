@@ -1,4 +1,4 @@
-#!/workspace/ScaleForge/.venv/bin/python3.12
+#!/workspace/ScaleForge/.venv/bin/python
 import sys
 from scaleforge.cli.main import cli
 if __name__ == '__main__':

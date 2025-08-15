@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-import sys
-from typing import Any, Dict
+# Cleaned unused imports
 
 from scaleforge.models.registry import validate_registry, load_registry_file
 

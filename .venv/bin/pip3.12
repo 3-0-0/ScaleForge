@@ -1,4 +1,4 @@
-#!/workspace/ScaleForge/.venv/bin/python3.12
+#!/workspace/ScaleForge/.venv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys

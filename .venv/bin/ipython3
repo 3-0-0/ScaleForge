@@ -1,4 +1,4 @@
-#!/workspace/ScaleForge/.venv/bin/python3.12
+#!/workspace/ScaleForge/.venv/bin/python
 import sys
 from IPython import start_ipython
 if __name__ == '__main__':
