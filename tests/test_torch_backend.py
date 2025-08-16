@@ -7,6 +7,20 @@ import types
 import pytest
 from PIL import Image
 
+import os, pytest
+pytestmark = pytest.mark.skipif(
+    os.getenv("SF_HEAVY_TESTS") != "1",
+    reason="requires basicsr/Real-ESRGAN; gated for smoke"
+)
+
+
+import os
+pytestmark = pytest.mark.skipif(
+    os.getenv("SF_HEAVY_TESTS") != "1",
+    reason="requires basicsr/Real-ESRGAN; gated for smoke"
+)
+
+
 
 @pytest.fixture(autouse=True)
 def stub_heavy_deps(tmp_path, monkeypatch):

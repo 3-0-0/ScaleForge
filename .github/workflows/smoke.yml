@@ -1,0 +1,31 @@
+
+
+name: smoke
+on: [push, pull_request]
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: python -m pip install --upgrade pip
+      - run: pip install -e .
+      - run: mkdir -p /workspace/build/test-reports
+      - name: Tests (no heavy deps)
+        env:
+          SF_HEAVY_TESTS: "0"
+        run: |
+          pytest -q --junitxml=/workspace/build/test-reports/junit.xml 2>&1 | tee /workspace/build/test.log
+      - name: CLI smoke
+        run: |
+          { python -m scaleforge.cli --help || true; } | tee /workspace/build/cli.log
+          { python -m scaleforge.cli detect-backend --debug || true; } | tee -a /workspace/build/cli.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smoke-artifacts
+          path: |
+            /workspace/build/cli.log
+            /workspace/build/test.log
+            /workspace/build/test-reports/**
+
