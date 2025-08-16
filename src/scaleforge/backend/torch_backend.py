@@ -17,7 +17,10 @@ import urllib.request
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from basicsr.archs.rrdbnet_arch import RRDBNet
+try:
+    from basicsr.archs.rrdbnet_arch import RRDBNet  # type: ignore
+except Exception:
+    RRDBNet = None
 from PIL import Image
 
 from scaleforge.backend.base import Backend
@@ -72,6 +75,8 @@ class TorchRealESRGANBackend(Backend):
             self.model_path = self._ensure_model()
             
             # Initialize model
+            if RRDBNet is None:
+                raise ImportError("basicsr not installed; set SF_HEAVY_TESTS=1 and install extras to run this path")
             model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32)
             state_dict = torch.load(str(self.model_path), map_location='cpu')
             

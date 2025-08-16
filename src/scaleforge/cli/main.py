@@ -34,19 +34,18 @@ DEV_MODE = False  # Global dev mode flag
 @click.version_option(version=get_version('scaleforge'), message='ScaleForge %(version)s')
 @click.group()
 @click.option('--dev', is_flag=True, help='Enable developer mode (debug logging, console, etc)')
-def cli(dev):
+def cli(dev, debug: bool = False):
     """ScaleForge command line interface."""
     global DEV_MODE
     DEV_MODE = dev
 
-@cli.command("detect-backend")
-@click.option('--debug', is_flag=True, help='Show detailed backend detection info')
-@click.option('--probe', is_flag=True, help='Force fresh GPU capability detection')
-def detect_backend(debug: bool, probe: bool) -> None:
+@cli.command('detect-backend')
+@click.option('--debug', is_flag=True, default=False, help='Debug output')
+@click.option('--probe', is_flag=True, default=False, help='Run detailed probe')
+def detect_backend(debug: bool = False, probe: bool = False):
     """Detect and display GPU backend capabilities."""
-    from scaleforge.backend import detect_gpu_caps, load_caps
-    from scaleforge.config.loader import load_config
-    import json
+    from scaleforge.backend.detector import detect_backend
+    print(detect_backend(debug=debug))
     
     cfg = load_config()
     app_root = Path(str(cfg.model_dir)).parent
@@ -115,8 +114,7 @@ def gui():
     ScaleForgeApp().run()
 
 @cli.command("detect-backend")
-@click.option('--debug', is_flag=True, help='Show detailed backend detection info')
-@click.option('--probe', is_flag=True, help='Force fresh GPU capability detection')
+@click.option("--debug", is_flag=True, default=False, help="Debug output")
 def detect_backend(debug: bool, probe: bool) -> None:
     """Detect and display GPU backend capabilities."""
     from scaleforge.backend import detect_gpu_caps, load_caps
