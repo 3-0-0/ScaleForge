@@ -47,7 +47,7 @@ def get_backend(model_name: str | None = None) -> Backend:
         return VulkanBackend(model_name=model_name)
 
     try:
-        import torch  # noqa: WPS433 (dynamic import)
+        import torch
 
         if torch.cuda.is_available():
             logger.info("Detected CUDA – using Torch backend")

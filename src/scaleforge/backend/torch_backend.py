@@ -18,6 +18,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from basicsr.archs.rrdbnet_arch import RRDBNet
+try:
+    from basicsr.archs.rrdbnet_arch import RRDBNet  # type: ignore
+except Exception:
+    RRDBNet = None
 from PIL import Image
 
 from scaleforge.backend.base import Backend
@@ -28,11 +32,48 @@ if TYPE_CHECKING:  # pragma: no cover – type hints only
     from scaleforge.core.job import Job  # noqa: F401 – forward reference
 
 
+class TorchRealESRGANBackend(Backend):
+    """Real-ESRGAN ×4 back-end powered by PyTorch."""
+
+    name = "torch-realesrgan"
+
+    _MODEL_FILE = "RealESRGAN_x4plus.pth"
+    _MODEL_SHA256 = (
+        "4df1882840bb64721e0fe63095c049f77b0934d263528b91c04e2193c25e0b70"
+    )
+    _URL = (
+        "https://github.com/xinntao/Real-ESRGAN/releases/download/"
+        "v0.2.5.0/RealESRGAN_x4plus.pth"
+    )
+
+    # ------------------------------------------------------------------
+    # Life-cycle
+    # ------------------------------------------------------------------
+    def __init__(self, *, prefer_gpu: bool = True) -> None:  # noqa: D401 – simple
+        torch = self._lazy_import("torch")
+        realesrgan_mod = self._lazy_import("realesrgan")
+
+        device = "cuda" if prefer_gpu and torch.cuda.is_available() else "cpu"
+        model_path = self._ensure_model()
+
+        self._upsampler = realesrgan_mod.RealESRGAN(device=device, scale=4)
+        self._upsampler.load_weights(str(model_path))
+
+    # ------------------------------------------------------------------
+
 MODEL_URLS = {
     'realesr-general-x4v3': 'https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth',
     'realesrgan-x4plus': 'https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth',
     'realesr-animevideov3': 'https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-animevideov3.pth'
 }
+
+DEFAULT_MODEL = 'realesr-general-x4v3'
+
+class TorchRealESRGANBackend(Backend):
+    """Real-ESRGAN back-end powered by PyTorch supporting multiple models."""
+
+    name = "torch-realesrgan"
+
 
 DEFAULT_MODEL = 'realesr-general-x4v3'
 
@@ -72,6 +113,8 @@ class TorchRealESRGANBackend(Backend):
             self.model_path = self._ensure_model()
             
             # Initialize model
+            if RRDBNet is None:
+                raise ImportError("basicsr not installed; set SF_HEAVY_TESTS=1 and install extras to run this path")
             model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32)
             state_dict = torch.load(str(self.model_path), map_location='cpu')
             
@@ -149,6 +192,52 @@ class TorchRealESRGANBackend(Backend):
             logger.warning(f"Invalid scale {scale}, defaulting to {self._default_scale}")
             scale = self._default_scale
 
+
+    def _get_model_url(self) -> str:
+        """Return the download URL for the current model."""
+        return MODEL_URLS[self.model_name]
+
+    # ------------------------------------------------------------------
+    # Backend API – required by :class:`~scaleforge.backend.base.Backend`.
+    # ------------------------------------------------------------------
+    async def upscale(  # type: ignore[override] – base declares async
+        self,
+        src: Path,
+        dst: Path,
+        *,
+        scale: int = 4,
+        tile: int | None = None,
+        job: "Job" | None = None,  # noqa: D401 – future use
+    ) -> None:
+        """Upscale *src* to *dst*.
+
+        Parameters
+        ----------
+        src, dst
+            Input and output paths.
+        scale
+            Ignored for now – always ×4 (Real-ESRGAN model is fixed).
+        tile, job
+            Reserved for future improvements.
+        """
+        img = Image.open(src).convert("RGB")
+        result = self._upsampler.predict(img)
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        result.save(dst)
+
+            Target scale (2 or 4). Falls back to model default if invalid.
+        tile, job
+            Reserved for future improvements.
+        """
+        # Get scale from job metadata if available
+        if job and job.metadata and "scale" in job.metadata:
+            scale = int(job.metadata["scale"])
+        
+        # Validate scale
+        if scale not in (2, 4):
+            logger.warning(f"Invalid scale {scale}, defaulting to {self._default_scale}")
+            scale = self._default_scale
+
         logger.info(f"Upscaling to {scale}x using model '{self.model_name}'")
         img = Image.open(src).convert("RGB")
         result = self._upsampler.predict(img)
@@ -170,12 +259,19 @@ class TorchRealESRGANBackend(Backend):
         """Return path to the model file, downloading if missing/invalid."""
         cache_dir = Path(os.getenv("SCALEFORGE_CACHE", "~/.cache/scaleforge/models")).expanduser()
         cache_dir.mkdir(parents=True, exist_ok=True)
+
+        model_path = cache_dir / self._MODEL_FILE
+
+        if not model_path.exists() or self._sha256(model_path) != self._MODEL_SHA256:
+            self._download(self._URL, model_path)
+            if self._sha256(model_path) != self._MODEL_SHA256:  # pragma: no cover
         model_path = cache_dir / self._get_model_file()
 
         if not model_path.exists() or self._sha256(model_path) != self._MODEL_SHA256[self.model_name]:
             from scaleforge.backend.torch_backend import MODEL_URLS
             self._download(MODEL_URLS[self.model_name], model_path)
             if self._sha256(model_path) != self._MODEL_SHA256[self.model_name]:  # pragma: no cover
+
                 raise RuntimeError("Model checksum verification failed")
         return model_path
 

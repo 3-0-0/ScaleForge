@@ -17,6 +17,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
+    env:
+      SF_HEAVY_TESTS: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+      - run: python -m pip install -U pip pytest
         with:
           python-version: ${{ matrix.python-version }}
           cache: ${{ matrix.os == 'ubuntu-latest' && 'pip' || '' }}
@@ -46,6 +52,8 @@ jobs:
   e2e-test-upscale:
     needs: [test]
     runs-on: ubuntu-latest
+    env:
+      SF_HEAVY_TESTS: "0"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -63,3 +71,4 @@ jobs:
           name: upscale-results
           path: output/
 
+          path: output/

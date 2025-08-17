@@ -43,6 +43,7 @@ def init_db(conn: sqlite3.Connection):
             conn.commit()
 
 DB_SCHEMA = f"""
+DB_SCHEMA = """
 PRAGMA journal_mode=WAL;
 PRAGMA busy_timeout=5000;
 
@@ -138,6 +139,28 @@ def init_db(conn: sqlite3.Connection, force: bool = False):
     
     # Add version tracking
     conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+    init_db(db_path)
+
+def init_db(db_path: Path, force: bool = False):
+    """Initialize or upgrade database schema."""
+    db_exists = db_path.exists()
+    
+    with get_conn(db_path) as conn:
+        if db_exists and not force:
+            if check_schema(conn):
+                return  # Schema is current
+            print("Warning: Database schema outdated. Attempting upgrade...")
+            
+        # Create or recreate schema
+        conn.executescript(DB_SCHEMA)
+        
+        # Add version tracking
+        conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        conn.commit()
+    with get_conn(db_path) as conn:
+        # Initialize with force=True to ensure fresh schema
+        conn.executescript(DB_SCHEMA)
+        conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     conn.commit()
 
 
