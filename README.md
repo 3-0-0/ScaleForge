@@ -8,12 +8,7 @@
 
 # ScaleForge
 
-Fast, portable image upscaler/resizer with smart GPU detection. Core pipeline + simple demos for quick verification.
-
-<p align="center">
-  <!-- Optional banner: put an image at assets/brand/banner.png and uncomment -->
-  <!-- <img src="assets/brand/banner.png" width="720" alt="ScaleForge banner"> -->
-</p>
+Fast, portable AI upscaler/resizer powered by Real-ESRGAN — with smart GPU detection and a single pipeline for CLI and GUI.
 
 [![CI](https://img.shields.io/github/actions/workflow/status/3-0-0/ScaleForge/ci.yml?label=CI)](https://github.com/3-0-0/ScaleForge/actions)
 [![Release](https://img.shields.io/github/v/release/3-0-0/ScaleForge)](https://github.com/3-0-0/ScaleForge/releases)
@@ -25,11 +20,16 @@ Fast, portable image upscaler/resizer with smart GPU detection. Core pipeline + 
 
 ## Why ScaleForge?
 
-- **Smart backend selection** with fallbacks  
-  CUDA → ROCm/NCNN/Vulkan → CPU, with a clear decision log.
+- **Smart backend selection** with fallbacks:
+  - NVIDIA → PyTorch CUDA
+  - AMD (Linux ROCm-capable) → PyTorch ROCm
+  - Intel/AMD (no CUDA/ROCm) → NCNN/Vulkan
+  - Else → PyTorch CPU
+- **No-drama install** (venv or portable build).
+- **Model manager**: list, fetch, cache, resume.
 - **One simple CLI** with a single pipeline.
-- **Batteries-included demos** to validate your environment (no GPU toolchains required).
 - **Works in a venv**; friendly to CI.
+- **Batteries included**: tiny sample + CPU-only demo to verify your setup (no GPU toolchains required).
 
 ---
 
@@ -61,7 +61,7 @@ ScaleForge automatically detects your GPU capabilities and caches the results fo
 * **Cache location**: `${APP_ROOT}/gpu_caps.json`
 * **Key information**:
 
-  * GPU vendor (nvidia / amd / intel)
+  * GPU vendor (Nvidia / AMD / Intel)
   * Recommended backend (torch-cuda / torch-rocm / torch-cpu / ncnn-vulkan)
   * Performance capabilities (e.g., max tile size, megapixels)
   * Detection timestamp
