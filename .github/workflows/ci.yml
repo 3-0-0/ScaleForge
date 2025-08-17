@@ -1,7 +1,3 @@
-name: CI
-on: [push, pull_request]
-
-jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
@@ -37,3 +33,85 @@ jobs:
         with:
           name: ci-requirements-${{ matrix.python-version }}
           path: requirements_ci_runtime.txt
+
+  linux_test:
+    runs-on: ubuntu-latest
+    env:
+      SF_HEAVY_TESTS: "0"
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+      - run: python -m pip install -U pip pytest
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: pip install -e '.[dev]'
+      - run: pytest --cov=scaleforge
+      - uses: codecov/codecov-action@v4
+
+  windows_ncnn_test:
+    needs: linux_test
+    runs-on: windows-latest
+    env:
+      SF_HEAVY_TESTS: "0"
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install Vulkan Toolkit
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/xinntao/real-esrgan-ncnn-vulkan/releases/download/20220424-windows/real-esrgan-ncnn-vulkan-20220424-windows.zip" -OutFile vulkan.zip
+          Expand-Archive vulkan.zip -DestinationPath .
+          Add-Content $env:GITHUB_PATH "$pwd"
+
+      - name: Install Python Dependencies
+        run: pip install -e '.[dev]'
+
+      - name: Run NCNN Backend Tests
+        run: pytest tests/test_ncnn_backend.py -v --log-cli-level=INFO
+
+      - name: Upload Test Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-test-logs-${{ matrix.python-version }}
+          path: |
+            tests/output/
+            *.log
+
+  e2e-test-upscale:
+    needs: [linux_test]
+    runs-on: ubuntu-latest
+    env:
+      SF_HEAVY_TESTS: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          pip install -e .
+          pip install pillow
+      - name: Run end-to-end test
+        run: |
+          mkdir -p assets output
+          chmod +x scripts/test-upscale.sh
+          ./scripts/test-upscale.sh
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: upscale-results
+          path: output/

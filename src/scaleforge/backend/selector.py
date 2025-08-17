@@ -26,27 +26,34 @@ def _env_override() -> str | None:
     return None
 
 
-def get_backend() -> Backend:
-    """Return a Backend instance following the selection rules."""
+def get_backend(model_name: str | None = None) -> Backend:
+    """Return a Backend instance following the selection rules.
+    
+    Args:
+        model_name: Optional model name to load. Supported values:
+            - 'realesr-general-x4v3' (default)
+            - 'realesrgan-x4plus'
+            - 'realesr-animevideov3'
+    """
 
     use_stub = os.getenv("SF_STUB_UPSCALE", "0") == "1"
 
     override = _env_override()
     if override in {"torch", "pytorch"}:
         logger.info("Backend forced to Torch (override)")
-        return TorchBackend(stub=use_stub)
+        return TorchBackend(model_name=model_name, stub=use_stub)
     if override == "vulkan":
         logger.info("Backend forced to Vulkan (override)")
-        return VulkanBackend()
+        return VulkanBackend(model_name=model_name)
 
     try:
-        import torch  # noqa: WPS433 (dynamic import)
+        import torch
 
         if torch.cuda.is_available():
             logger.info("Detected CUDA – using Torch backend")
         else:
             logger.info("Torch CPU – using Torch backend")
-        return TorchBackend(stub=use_stub)
+        return TorchBackend(model_name=model_name, stub=use_stub)
     except ModuleNotFoundError:  # pragma: no cover – unlikely
         logger.warning("PyTorch not installed – defaulting to Vulkan stub")
-        return VulkanBackend()
+        return VulkanBackend(model_name=model_name)

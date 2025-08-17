@@ -14,6 +14,22 @@ class VulkanBackend(Backend):
 
     name = "vulkan"
 
+    def is_available(self) -> bool:
+        """Check if backend is available (binary exists and Vulkan works)."""
+        try:
+            import subprocess
+            result = subprocess.run(["realesrgan-ncnn-vulkan", "-h"], 
+                                  capture_output=True,
+                                  check=False)
+            return result.returncode == 0
+        except FileNotFoundError:
+            return False
+
+    def description(self) -> str:
+        """Return backend description."""
+        return "NCNN-Vulkan (external binary)"
+
+
     async def upscale(
         self,
         src: Path,

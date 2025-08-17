@@ -1,13 +1,18 @@
 import sqlite3
 
-from scaleforge.db.models import Job, JobStatus, init_db
+from scaleforge.db.models import Job, JobStatus
 from scaleforge.utils.hash import hash_params
 
 
 def _make_conn(tmp_path):
+    """Create and return a database connection that remains open."""
+    from scaleforge.db.models import get_conn
     db = tmp_path / "sf.db"
-    init_db(db)
+    # Create connection outside context manager to keep it open
     conn = sqlite3.connect(db)
+    # Ensure schema is initialized
+    with get_conn(conn):
+        pass
     return conn
 
 

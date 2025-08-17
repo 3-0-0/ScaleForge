@@ -5,6 +5,10 @@ description = "ScaleForge – portable image upscaler powered by Real-ESRGAN"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
+version = "0.4.0-alpha"
+description = "ScaleForge – portable image upscaler powered by Real-ESRGAN"
+readme = {file = "README.md", content-type = "text/markdown"}
+license = "MIT"
 authors = [{name = "ScaleForge Team", email = "openhands@all-hands.dev"}]
 requires-python = ">=3.10"
 dependencies = [
@@ -40,8 +44,22 @@ exclude = ["tests*", "*__pycache__*"]
 scaleforge = "scaleforge.cli.main:cli"
 
 [project.optional-dependencies]
+
 # Runtime heavy extras
 torch = ["torch", "realesrgan"]
+
+gui = [
+    "kivy>=2.3.0"
+]
+# Runtime heavy extras
+torch = [
+    "torch>=2.0.0; sys_platform != 'win32'",
+    "torch>=2.0.0; sys_platform == 'win32'",
+    "realesrgan==0.2.5.0", 
+    "basicsr==1.4.2",
+    "xformers>=0.0.22; sys_platform != 'win32'",
+    "charset-normalizer<3.0.0; python_version >= '3.12'"
+]
 
 # Development extras (includes test/lint)
 dev = [
@@ -53,3 +71,7 @@ dev = [
     "ipython>=8.0",
     "build>=1.0",
 ]
+]
+
+[tool.ruff]
+extend-exclude = ["build", "dist", "*.egg-info"]

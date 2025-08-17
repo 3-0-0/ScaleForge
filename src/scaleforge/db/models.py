@@ -10,9 +10,46 @@ from typing import Iterator, Any, Mapping
 
 from pydantic import BaseModel, Field
 
+SCHEMA_VERSION = 1
+
+def init_db(conn: sqlite3.Connection):
+    """Initialize database with proper schema versioning."""
+    cursor = conn.cursor()
+    
+    # Check if schema_info exists
+    cursor.execute("""
+        SELECT name FROM sqlite_master 
+        WHERE type='table' AND name='schema_info'
+    """)
+    
+    if not cursor.fetchone():
+        # Fresh database - create all tables
+        cursor.executescript(DB_SCHEMA)
+        cursor.execute("""
+            INSERT INTO schema_info (version, updated_at)
+            VALUES (?, ?)
+        """, (SCHEMA_VERSION, datetime.now(timezone.utc).isoformat()))
+        conn.commit()
+    else:
+        # Existing database - check version
+        cursor.execute("SELECT version FROM schema_info")
+        db_version = cursor.fetchone()[0]
+        if db_version < SCHEMA_VERSION:
+            # TODO: Implement migrations when needed
+            cursor.execute("""
+                UPDATE schema_info 
+                SET version = ?, updated_at = ?
+            """, (SCHEMA_VERSION, datetime.now(timezone.utc).isoformat()))
+            conn.commit()
+
 DB_SCHEMA = """
 PRAGMA journal_mode=WAL;
 PRAGMA busy_timeout=5000;
+
+CREATE TABLE IF NOT EXISTS schema_info (
+    version INTEGER PRIMARY KEY,
+    updated_at TEXT NOT NULL
+);
 
 CREATE TABLE IF NOT EXISTS jobs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,9 +94,17 @@ class JobStatus:
 
 
 @contextmanager
-def get_conn(db_path: Path) -> Iterator[sqlite3.Connection]:
+def get_conn(db_path: Path | sqlite3.Connection) -> Iterator[sqlite3.Connection]:
+    if isinstance(db_path, sqlite3.Connection):
+        if not check_schema(db_path):
+            init_db(db_path)
+        yield db_path
+        return
+        
     conn = sqlite3.connect(db_path)
     try:
+        if not check_schema(conn):
+            init_db(conn)
         yield conn
     finally:
         conn.close()
@@ -96,6 +141,11 @@ def init_db(db_path: Path, force: bool = False):
         # Add version tracking
         conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         conn.commit()
+    with get_conn(db_path) as conn:
+        # Initialize with force=True to ensure fresh schema
+        conn.executescript(DB_SCHEMA)
+        conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+    conn.commit()
 
 
 class Job(BaseModel):
