@@ -1,5 +1,7 @@
 [project]
 name = "scaleforge"
+version = "0.4.0-alpha"
+description = "ScaleForge – portable image upscaler powered by Real-ESRGAN"
 version = "0.1.0"
 description = "ScaleForge – portable image upscaler powered by Real-ESRGAN"
 readme = "README.md"
@@ -54,6 +56,7 @@ gui = [
 # Runtime heavy extras
 torch = [
     "torch>=2.0.0; sys_platform != 'win32'",
+    "torch>=2.0.0+cpu; sys_platform == 'win32'",
     "torch>=2.0.0; sys_platform == 'win32'",
     "realesrgan==0.2.5.0", 
     "basicsr==1.4.2",
@@ -69,6 +72,7 @@ dev = [
     "hypothesis>=6.100.0",
     "pytest-mock>=3.0",
     "ipython>=8.0",
+]
     "build>=1.0",
 ]
 ]

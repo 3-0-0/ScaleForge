@@ -1,3 +1,9 @@
+name: CI
+on: [push, pull_request]
+
+jobs:
+  linux_test:
+    runs-on: ubuntu-latest
   test:
     runs-on: ubuntu-latest
     strategy:

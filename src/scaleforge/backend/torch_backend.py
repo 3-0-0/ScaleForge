@@ -17,6 +17,7 @@ import urllib.request
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from basicsr.archs.rrdbnet_arch import RRDBNet
 try:
     from basicsr.archs.rrdbnet_arch import RRDBNet  # type: ignore
 except Exception:
@@ -65,6 +66,14 @@ MODEL_URLS = {
     'realesrgan-x4plus': 'https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth',
     'realesr-animevideov3': 'https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-animevideov3.pth'
 }
+
+DEFAULT_MODEL = 'realesr-general-x4v3'
+
+class TorchRealESRGANBackend(Backend):
+    """Real-ESRGAN back-end powered by PyTorch supporting multiple models."""
+
+    name = "torch-realesrgan"
+
 
 DEFAULT_MODEL = 'realesr-general-x4v3'
 
@@ -146,6 +155,43 @@ class TorchRealESRGANBackend(Backend):
     def _get_model_file(self) -> str:
         """Return the filename for the current model."""
         return f"{self.model_name}.pth"
+
+    def _get_model_url(self) -> str:
+        """Return the download URL for the current model."""
+        return MODEL_URLS[self.model_name]
+
+    # ------------------------------------------------------------------
+    # Backend API – required by :class:`~scaleforge.backend.base.Backend`.
+    # ------------------------------------------------------------------
+    async def upscale(  # type: ignore[override] – base declares async
+        self,
+        src: Path,
+        dst: Path,
+        *,
+        scale: int = 4,
+        tile: int | None = None,
+        job: "Job" | None = None,  # noqa: D401 – future use
+    ) -> None:
+        """Upscale *src* to *dst*.
+
+        Parameters
+        ----------
+        src, dst
+            Input and output paths.
+        scale
+            Target scale (2 or 4). Falls back to model default if invalid.
+        tile, job
+            Reserved for future improvements.
+        """
+        # Get scale from job metadata if available
+        if job and job.metadata and "scale" in job.metadata:
+            scale = int(job.metadata["scale"])
+        
+        # Validate scale
+        if scale not in (2, 4):
+            logger.warning(f"Invalid scale {scale}, defaulting to {self._default_scale}")
+            scale = self._default_scale
+
 
     def _get_model_url(self) -> str:
         """Return the download URL for the current model."""

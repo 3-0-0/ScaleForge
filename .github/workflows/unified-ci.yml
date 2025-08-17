@@ -14,6 +14,9 @@ jobs:
           - os: windows-latest
             python-version: "3.11"
     runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
     env:
       SF_HEAVY_TESTS: "0"
     steps:
@@ -66,4 +69,6 @@ jobs:
         if: always()
         with:
           name: upscale-results
+          path: output/
+
           path: output/

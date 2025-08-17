@@ -12,13 +12,36 @@ import sys
 from pathlib import Path
 from typing import List, Optional
 
+from scaleforge.models.downloader import ModelDownloader
+from scaleforge.gui.app import ScaleForgeApp
+from scaleforge.db.models import get_conn
+
+
 import click
+import logging
 
 from pydantic import BaseModel
+DEV_MODE = False  # Global dev mode flag
+
+@click.version_option(version=get_version('scaleforge'), message='ScaleForge %(version)s')
+@click.group()
+@click.option('--dev', is_flag=True, help='Enable developer mode (debug logging, console, etc)')
+def cli(dev):
+    """ScaleForge command line interface."""
+    global DEV_MODE
+    DEV_MODE = dev
+    if dev:
+        click.echo("🛠️  Developer mode enabled")
 
 # lazy-import in run()
 from scaleforge.cli.info import info as info_command
 from scaleforge.config.loader import load_config
+from scaleforge.db.models import init_db
+from scaleforge.backend.selector import get_backend
+from scaleforge.pipeline.queue import JobQueue
+from scaleforge.cli.info import info as info_command
+
+from .utils import print_status
 from scaleforge.db.models import get_conn, init_db
 # lazy-import in gui()
 # lazy-import where needed
@@ -109,6 +132,9 @@ def model_hash(path: Path):
 
 @cli.command()
 def gui():
+    """Launch the ScaleForge GUI."""
+    ScaleForgeApp().run()
+
     from scaleforge.gui.app import ScaleForgeApp  # lazy-import
     """Launch the ScaleForge GUI."""
     ScaleForgeApp().run()
@@ -168,6 +194,8 @@ def is_supported_image(path: Path) -> bool:
 
 cfg = load_config()
 # Initialize database on first connection
+with get_conn(cfg.database_path) as conn:
+    init_db(conn)
 
 
 @click.group()
@@ -184,6 +212,9 @@ cli.add_command(model_command)
     Commands:
       run    - Process images with AI upscaling
       info   - List supported models and backends
+    """
+    pass
+
       registry - Registry management commands
     """
     pass
@@ -247,6 +278,117 @@ class PlanItem(BaseModel):
   - realesrgan-x4plus: General purpose images (default)
   - realesr-general-x4v3: Enhanced details for photos
   - realesr-animevideov3: Optimized for anime/cartoons
+
+Supported formats: .jpg, .png, .bmp, .webp, .tiff, .gif (first frame only)
+
+Examples:
+  scaleforge run -i *.jpg
+  scaleforge run photos/ --output upscaled/ --model realesr-general-x4v3
+  scaleforge run anime.gif --model realesr-animevideov3 --verbose""")
+@click.option("--concurrency", "-j", type=int, default=None,
+             help="Number of parallel jobs (default: CPU cores)")
+@click.option("--resume", is_flag=True,
+             help="Resume previous interrupted run")
+@click.option("--force-backend", type=click.Choice(["torch", "ncnn", "cpu"]),
+             help="Force specific backend (for debugging)")
+@click.option("--reset-db", is_flag=True,
+             help="Reset job tracking database (use with caution)")
+@click.option("--scale", type=click.Choice(["2", "4"], case_sensitive=False),
+             default=None,
+             help="Upscale factor (2 or 4). Overrides model default.")
+def run(inputs: List[Path], inputs_fallback: tuple[Path], dry_run: bool, 
+       out_dir: Path, model: str, concurrency: int, 
+       resume: bool, reset_db: bool, verbose: bool, 
+       scale: str | None = None, force_backend: str | None = None):
+    """Upscale images using AI models.
+    
+    Args:
+        verbose: If True, show detailed processing information
+        scale: Upscale factor (2=2x, 4=4x) or None for model default
+    """
+    scale_int = int(scale) if scale else None
+    # Track processing stats
+    processed_files = 0
+    success_count = 0
+    warning_count = 0
+    error_count = 0
+
+
+    def update_status(file: Path, status: str, message: str = ""):
+        """Update and display processing status."""
+        nonlocal processed_files, success_count, warning_count, error_count
+        processed_files += 1
+        if status == "success":
+            success_count += 1
+        elif status == "warning":
+            warning_count += 1
+        else:
+            error_count += 1
+        print_status(file, status, message)
+
+
+    if dry_run:
+        click.echo("🔍 Dry run mode - showing planned operations:")
+        for p in inputs + list(inputs_fallback):
+            if p.is_dir():
+                update_status(p, "success", "Directory will be processed")
+                for img in p.rglob("*.png"):
+                    update_status(img, "success", "Would upscale")
+            else:
+                update_status(p, "success", "Would upscale")
+        return
+
+    # Debug imports
+    try:
+        from scaleforge.models.downloader import ModelDownloader
+        click.echo("✅ ModelDownloader import successful") if verbose else None
+    except ImportError as e:
+        click.echo(f"❌ ModelDownloader import failed: {e}", err=True)
+        raise
+
+    if verbose:
+        click.echo("🚀 ScaleForge run started (verbose mode)")
+        click.echo(f"Inputs: {[*inputs, *inputs_fallback]}")
+        click.echo(f"Output directory: {out_dir}")
+        click.echo(f"Model: {model} (scale: {scale}x)")
+        click.echo(f"Concurrency: {concurrency}")
+
+        click.echo("\nProcessing status:")
+        click.echo("----------------")
+
+
+    downloader = ModelDownloader()
+    registry = downloader.get_registry()
+    
+    if model not in registry:
+        available = "\n".join(f" • {name}" for name in registry.keys())
+        raise click.BadParameter(
+            f"Unknown model: {model}\nAvailable models:\n{available}"
+        )
+        
+    if not downloader.is_model_downloaded(model):
+        click.echo(f"📥 Model not found locally: {model}")
+        click.echo(f"🔽 Downloading from: {registry[model]['url']}")
+        try:
+            ModelDownloader().download_model(model)
+            click.echo("✅ Download complete")
+        except Exception as e:
+            raise click.ClickException(f"Failed to download model: {str(e)}")
+    # Combine --input and positional args
+    all_inputs = list(inputs) + list(inputs_fallback)
+    if not all_inputs:
+        click.echo("❌ No input files provided.", err=True)
+        click.echo("Try:", err=True)
+        click.echo("  scaleforge run *.jpg", err=True)
+        click.echo("  scaleforge run photos/ --output output/", err=True)
+        raise click.Abort()
+
+
+    # Check for GIF limitations
+    from ..models.downloader import ModelDownloader
+    ModelDownloader.check_gif_limitations(all_inputs)
+
+
 
 Supported formats: .jpg, .png, .bmp, .webp, .tiff, .gif (first frame only)
 
