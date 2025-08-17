@@ -1,7 +1,39 @@
-name: CI
-on: [push, pull_request]
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
 
-jobs:
+      - run: python --version
+      - run: uname -a
+      - run: pip install -e '.[dev]'
+      - run: python -m pip install --upgrade pip setuptools>=77.0.0 build wheel
+      - run: python -m pip check
+      - run: pip list
+      - run: python -c "import sys; print(sys.path)"
+      - run: python -c "import pkg_resources; print(pkg_resources.working_set)"
+
+      - run: pip freeze > requirements_ci_runtime.txt
+      - run: ruff check .
+      - run: pytest --cov=scaleforge
+      - uses: codecov/codecov-action@v4
+        continue-on-error: true
+      - run: python -m build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.python-version }}
+          path: dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ci-requirements-${{ matrix.python-version }}
+          path: requirements_ci_runtime.txt
+
   linux_test:
     runs-on: ubuntu-latest
     env:

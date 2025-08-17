@@ -29,6 +29,7 @@ class VulkanBackend(Backend):
         """Return backend description."""
         return "NCNN-Vulkan (external binary)"
 
+
     async def upscale(
         self,
         src: Path,

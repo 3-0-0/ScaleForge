@@ -123,6 +123,24 @@ def check_schema(conn: sqlite3.Connection) -> bool:
 def reset_db(db_path: Path):
     """Delete and recreate database."""
     db_path.unlink(missing_ok=True)
+    init_db(db_path)
+
+def init_db(db_path: Path, force: bool = False):
+    """Initialize or upgrade database schema."""
+    db_exists = db_path.exists()
+    
+    with get_conn(db_path) as conn:
+        if db_exists and not force:
+            if check_schema(conn):
+                return  # Schema is current
+            print("Warning: Database schema outdated. Attempting upgrade...")
+            
+        # Create or recreate schema
+        conn.executescript(DB_SCHEMA)
+        
+        # Add version tracking
+        conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        conn.commit()
     with get_conn(db_path) as conn:
         # Initialize with force=True to ensure fresh schema
         conn.executescript(DB_SCHEMA)

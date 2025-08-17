@@ -21,7 +21,6 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-
 @pytest.fixture(autouse=True)
 def stub_heavy_deps(tmp_path, monkeypatch):
     """Stub torch & realesrgan so the test avoids big wheels + network."""
