@@ -1,33 +1,8 @@
-
-
-name: smoke
-on: [push, pull_request]
+name: smoke (retired)
+on:
+  workflow_dispatch:
 jobs:
-  smoke:
+  noop:
     runs-on: ubuntu-latest
-    env:
-      SF_HEAVY_TESTS: "0"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - run: python -m pip install --upgrade pip
-      - run: pip install -e .
-      - run: pip install -U pytest
-      - run: mkdir -p ./build/test-reports
-      - name: Tests (no heavy deps)
-        env:
-          SF_HEAVY_TESTS: "0"
-        run: |
-          pytest -q --junitxml=./build/test-reports/junit.xml 2>&1 | tee ./build/test.log
-      - name: CLI smoke
-        run: |
-          { python -m scaleforge.cli --help || true; } | tee ./build/cli.log
-          { python -m scaleforge.cli detect-backend --debug || true; } | tee -a ./build/cli.log
-      - uses: actions/upload-artifact@v4
-        with:
-          name: smoke-artifacts
-          path: |
-            ./build/cli.log
-            ./build/test.log
-            ./build/test-reports/**
+      - run: echo "Legacy workflow retired; use demo-smoke instead."
