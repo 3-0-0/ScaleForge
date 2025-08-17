@@ -8,164 +8,151 @@
 
 # ScaleForge
 
-Fast, portable AI upscaler/resizer powered by Real-ESRGAN — with smart GPU detection and a single pipeline for CLI and GUI.
+Fast, portable image upscaler/resizer with smart GPU detection. Core pipeline + simple demos for quick verification.
 
 <p align="center">
   <!-- Optional banner: put an image at assets/brand/banner.png and uncomment -->
-  <!--<img src="assets/brand/banner.png" width="720" alt="ScaleForge banner">-->
+  <!-- <img src="assets/brand/banner.png" width="720" alt="ScaleForge banner"> -->
 </p>
 
 [![CI](https://img.shields.io/github/actions/workflow/status/3-0-0/ScaleForge/ci.yml?label=CI)](https://github.com/3-0-0/ScaleForge/actions)
 [![Release](https://img.shields.io/github/v/release/3-0-0/ScaleForge)](https://github.com/3-0-0/ScaleForge/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-informational.svg)](LICENSE)
-![Python](https://img.shields.io/badge/python-3.12-blue.svg)
+![Python](https://img.shields.io/badge/python-3.10–3.12-blue.svg)
 ![OS](https://img.shields.io/badge/OS-Windows%20%7C%20Linux-lightgrey.svg)
 
 ---
 
 ## Why ScaleForge?
-- **One code path** for CLI + GUI. No duplicate logic.
-- **Smart backend selection** with fallbacks:
-  - NVIDIA → PyTorch CUDA  
-  - AMD (Linux ROCm-capable) → PyTorch ROCm  
-  - Intel/AMD (no CUDA/ROCm) → NCNN/Vulkan  
-  - Else → PyTorch CPU
-- **No-drama install** (venv or portable build).  
-- **Model manager**: list, fetch, cache, resume.  
-- **Batteries included**: tiny sample + CPU-only demo to verify your setup.
+
+- **Smart backend selection** with fallbacks  
+  CUDA → ROCm/NCNN/Vulkan → CPU, with a clear decision log.
+- **One simple CLI** with a single pipeline.
+- **Batteries-included demos** to validate your environment (no GPU toolchains required).
+- **Works in a venv**; friendly to CI.
 
 ---
 
-## Quick start
-
-### A) From source (dev workflow)
+## Quick start (from source)
 
 ```bash
 # 1) Clone and enter
 git clone https://github.com/3-0-0/ScaleForge.git
 cd ScaleForge
 
-# 2) Create an isolated env (Python 3.12)
+# 2) Create an isolated env (Python 3.10–3.12)
 python -m venv .venv
 # Linux/macOS
 source .venv/bin/activate
 # Windows (PowerShell)
 # .\.venv\Scripts\Activate.ps1
 
-# 3) Install (dev extras include ruff/pytest)
-pip install -e ".[dev]"
+# 3) Install
+pip install -U pip
+pip install -e ".[demo]" pytest
 ````
 
-Verify the pipeline end-to-end (CPU-only sanity check):
+---
+
+## GPU Detection & Capability Cache
+
+ScaleForge automatically detects your GPU capabilities and caches the results for optimal performance.
+
+* **Cache location**: `${APP_ROOT}/gpu_caps.json`
+* **Key information**:
+
+  * GPU vendor (nvidia / amd / intel)
+  * Recommended backend (torch-cuda / torch-rocm / torch-cpu / ncnn-vulkan)
+  * Performance capabilities (e.g., max tile size, megapixels)
+  * Detection timestamp
+
+**Commands**
 
 ```bash
-# Detect backend (prints decision + reasons)
+# Show current backend choice
+scaleforge detect-backend
+
+# Force a fresh probe / show details
 scaleforge detect-backend --debug
-
-# List built-in and user models
-scaleforge models list
-
-# Fetch a model (cached; resumes on retry)
-scaleforge models fetch realesrgan-x4plus
-
-# Run the tiny demo (bundled 128×128 → 2x)
-scaleforge demo --cpu-only
-# Output: samples/out/demo_2x.png
 ```
 
-Run on your own image:
+**Environment override**
+
+Set `SCALEFORGE_BACKEND` to force a backend:
+`torch-cuda`, `torch-rocm`, `torch-cpu`, `ncnn-vulkan`.
+
+---
+
+## CLI overview
 
 ```bash
-scaleforge run --in input.jpg --out out.png --scale 2x --backend auto
+scaleforge --help
 ```
 
-> Tip: `--backend auto` chooses the best available accelerator and logs the fallback chain used.
+Main commands implemented today:
+
+* `detect-backend` — detect/print the selected backend (see above)
+* `run` — run the pipeline (options vary by build)
+* `demo-upscale` — Pillow-only single image upscale (CPU)
+* `demo-batch` — Pillow-only batch upscale (CPU)
 
 ---
 
-## GUI (minimal path)
+## Demo (Pillow-only)
+
+A quick CPU-only way to try ScaleForge without GPU toolchains.
 
 ```bash
-scaleforge gui
-# Select image → Run. Uses the same pipeline as the CLI.
+# Single image
+python -m scaleforge.cli demo-upscale \
+  -i input.png -o out@2x.png -s 2 --mode lanczos
+
+# Batch (filters, suffix, dry-run, overwrite)
+python -m scaleforge.cli demo-batch \
+  -i ./imgs -o ./out --suffix @2x \
+  --include "./imgs/*.png" --exclude "./imgs/skip*.png" \
+  --limit 100 --dry-run
+
+# When satisfied, run without --dry-run; add --overwrite to replace existing files.
 ```
 
----
-
-## Features at a glance
-
-* Model registry with schema validation (built-ins + user models)
-* Robust download: checksum, resume, local cache
-* Tiled/streamed processing to avoid OOM
-* Decision log (why a backend was chosen, and what fell back)
-* Clean logs; `--debug` for deeper traces
-* Tests + ruff-clean code
+See **[docs/DEMO.md](docs/DEMO.md)** for more examples and notes on `--mode`, `--suffix`, `--include/--exclude`, `--limit`, `--overwrite`, `--dry-run`, and debug output.
 
 ---
 
-## Roadmap
+## Roadmap (short)
 
-* Sprint 20-B-F “finalize”
-
-  * ✅ Model downloader + registry polish (schema validate, CLI)
-  * ✅ Backend fallback: CUDA → ROCm/NCNN → CPU (decision log)
-  * ✅ One pipeline for CLI + GUI
-  * ⏳ Docs site + tiny video/GIF demo
-* Next
-
-  * Presets (quality/speed/memory)
-  * Batch jobs + resume/skip on failure
-  * Packaged builds (Windows first), `pipx` install
-  * Advanced model zoo (ESRGAN variants, face enhancer, denoise)
+* Backend fallback polish & logging ✅
+* Demo CLI (`demo-upscale`, `demo-batch`) ✅
+* Docs site & richer examples ⏳
+* Packaging improvements and presets ⏳
 
 ---
 
 ## Development
 
 ```bash
-# Lint
-ruff check .
-
-# Tests
+# Lint / tests (if configured in your environment)
 pytest -q
-
-# Type checks (optional if enabled)
-# mypy src/
 ```
 
 Project layout:
 
 ```
-src/            # library + CLI + GUI (single pipeline)
-tests/          # unit tests
-samples/        # tiny demo input + outputs
-assets/         # images, logos, GIFs for README/docs
+src/            # library + CLI
+tests/          # unit tests (demo tests included)
+docs/           # docs/DEMO.md quickstart
 ```
-
----
-
-## Backend selection (summary)
-
-1. Detect hardware + drivers
-2. Score candidates by capability
-3. Try in order; on failure, log and fall back
-4. Expose final choice via `detect-backend --debug`
-
-This keeps “works everywhere” as the default.
 
 ---
 
 ## Contributing
 
-Issues and PRs welcome. Please:
-
-1. Open an issue describing the change
-2. Keep diffs minimal and ruff-clean
-3. Add/adjust tests for behavior changes
+Issues and PRs welcome! Please keep diffs minimal and add tests when behavior changes.
 
 ---
 
-# Credits
+# 📜 CREDITS 
 
 ## 🧠 Core Contributors
 
@@ -184,7 +171,7 @@ Issues and PRs welcome. Please:
   _Auxiliary agent used to reduce compute costs during development._  
   → Powered by [DeepSeek-Coder 1.5](https://github.com/deepseek-ai/DeepSeek-Coder), a distilled model trained on GPT-3.5 and GPT-4 via OpenAI API.
 
-
+---
 
 ## ⚙️ Upstream Projects & Libraries
 
@@ -207,25 +194,25 @@ ScaleForge is made possible by the incredible open-source ecosystem. Huge thanks
 - [**mkdocs-material**](https://squidfunk.github.io/mkdocs-material/) – beautiful docs theme  
 - [**EditorConfig**](https://editorconfig.org/) – consistent coding styles across editors  
 
-
+---
 
 ## 🤝 Community Contributions
 _We welcome feedback, bug reports, and pull requests from the broader community. Join us on GitHub to help improve ScaleForge!_
 
-
+---
 
 ## 🌐 Project Resources
 - **GitHub Repository**: [ScaleForge on GitHub](https://github.com/3-0-0/scaleforge)  
 - **Documentation**: _(coming soon)_ :contentReference[oaicite:7]{index=7}
 
-
+---
 
 ## 💡 Inspiration
 - [**NASA / JWST Wallpapers – Webb Telescope**](https://webbtelescope.org/resource-gallery/images)  
 - [**NASA / JWST Wallpapers – Flickr**](https://www.flickr.com/photos/nasawebbtelescope/)  
   The beauty of the cosmos inspired the first use case that led to the creation of ScaleForge.
 
-
+---
 
 ## 🛠️ Infrastructure & CI/CD
 - [**GitHub Actions**](https://github.com/features/actions) – continuous integration and delivery
@@ -236,3 +223,7 @@ _We welcome feedback, bug reports, and pull requests from the broader community.
 ScaleForge is released under the [MIT License](LICENSE).
 
 ---
+
+## 🙏 Thanks
+To all maintainers, researchers, and contributors—your dedication makes ScaleForge possible.  
+We stand on your shoulders.

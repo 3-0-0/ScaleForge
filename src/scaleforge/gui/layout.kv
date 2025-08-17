@@ -1,0 +1,167 @@
+
+
+<MainLayout>:
+    orientation: 'vertical'
+    padding: 20
+    spacing: 15
+
+    Label:
+        text: 'ScaleForge'
+        font_size: 24
+        size_hint_y: None
+        height: 50
+
+    Button:
+        id: select_button
+        text: 'Select Image'
+        size_hint_y: None
+        height: 50
+        on_press: root.on_select_click()
+
+    Label:
+        id: filename_label
+        text: 'No image selected'
+        size_hint_y: None
+        height: 30
+
+    Image:
+        id: preview
+        source: ''
+        size_hint_y: None
+        height: 200
+        allow_stretch: True
+        keep_ratio: True
+
+    BoxLayout:
+        size_hint_y: None
+        height: 50
+        spacing: 5
+        
+        Spinner:
+            id: model_spinner
+            text: 'Select model'
+            size_hint_x: 0.8
+            on_text: root.on_model_select(self.text)
+            
+        Button:
+            id: refresh_models_button
+            text: '🔄'
+            size_hint_x: 0.2
+            tooltip_text: 'Reload available models from disk'
+            on_press: root.refresh_model_registry()
+
+    Spinner:
+        id: res_spinner
+        text: '2x'
+        values: ['2x', '4x']
+        size_hint_y: None
+        height: 50
+        on_text: root.on_resolution_select(self.text)
+
+    Button:
+        id: upscale_button
+        text: 'Upscale Image'
+        size_hint_y: None
+        height: 50
+        on_press: root.on_upscale_click()
+
+    Label:
+        id: output_dir_label
+        text: 'Output folder: (same as input)'
+        size_hint_y: None
+        height: 30
+
+    Button:
+        id: select_output_button
+        text: 'Select Output Folder'
+        size_hint_y: None
+        height: 40
+        on_press: root.on_select_output_click()
+
+    Label:
+        id: output_filename_label
+        text: ''
+        size_hint_y: None
+        height: 30
+
+    Label:
+        id: status_label
+        text: 'Ready'
+        size_hint_y: None
+        height: 30
+
+    # Debug Console Panel (Collapsible)
+    BoxLayout:
+        id: debug_console
+        size_hint_y: None
+        height: 0 if not app.dev_mode else 150
+        canvas.before:
+            Color:
+                rgba: (0.1, 0.1, 0.1, 1)
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        
+        ScrollView:
+            Label:
+                id: debug_text
+                text: "Debug console initialized"
+                size_hint_y: None
+                height: max(self.texture_size[1], debug_console.height)
+                text_size: self.width, None
+                color: (0.8, 0.8, 0.8, 1)
+                halign: 'left'
+                valign: 'top'
+                padding: (10, 10)
+
+    ProgressBar:
+        id: progress_bar
+        max: 100
+        value: 0
+        size_hint_y: None
+        height: 20
+
+
+    BoxLayout:
+        size_hint_y: None
+        height: 40
+        spacing: 5
+        padding: [5, 0]
+        canvas.before:
+            Color:
+                rgba: 0.9, 0.9, 0.9, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        
+        CheckBox:
+            id: dev_toggle
+            size_hint_x: None
+            width: 30
+            active: False
+            on_active: app.toggle_dev_mode(self.active)
+        
+        Label:
+            text: "Dev Mode"
+            size_hint_x: None
+            width: 80
+            font_size: "12sp"
+
+        Button:
+            text: "Clear Logs"
+            size_hint_x: None
+            width: 100
+            font_size: "12sp"
+            on_press: app.clear_debug_console()
+            disabled: not dev_toggle.active
+        
+        Label:
+            text: "[ref=version]v" + app.version + "[/ref]"
+            size_hint_x: 1
+            font_size: '12sp'
+            color: 0.2, 0.2, 0.8, 1
+            halign: 'right'
+            valign: 'center'
+            padding_x: 10
+            markup: True
+            on_ref_press: app.open_website()
