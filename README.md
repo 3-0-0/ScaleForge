@@ -33,3 +33,15 @@ GPU Detection & Capability Cache
 - Fields: vendor, backend, max_tile_size, max_megapixels, detected_at, source
 - Commands: scaleforge detect-backend --probe, scaleforge detect-backend --debug
 - Env overrides: environment variables that can influence vendor/backend or capabilities (see docs for exact names)
+
+
+### Demo (Pillow-only)
+
+For quick testing and demonstration purposes, ScaleForge includes a Pillow-based demo mode. See [docs/DEMO.md](docs/DEMO.md) for usage instructions.
+
+Key features:
+- Single image upscaling (`demo-upscale`)
+- Batch processing (`demo-batch`)
+- Various upsampling modes
+- File filtering options
+
