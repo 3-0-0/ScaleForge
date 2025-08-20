@@ -2,13 +2,6 @@
 name = "scaleforge"
 version = "0.4.0-alpha"
 description = "ScaleForge – portable image upscaler powered by Real-ESRGAN"
-version = "0.1.0"
-description = "ScaleForge – portable image upscaler powered by Real-ESRGAN"
-readme = "README.md"
-license = "MIT"
-license-files = ["LICENSE"]
-version = "0.4.0-alpha"
-description = "ScaleForge – portable image upscaler powered by Real-ESRGAN"
 readme = {file = "README.md", content-type = "text/markdown"}
 license = "MIT"
 authors = [{name = "ScaleForge Team", email = "openhands@all-hands.dev"}]
@@ -23,40 +16,23 @@ dependencies = [
 [project.urls]
 Homepage = "https://example.com/scaleforge"
 
-[build-system]
-requires = [
-    "setuptools>=67",
-    "wheel>=0.40.0",
-    "setuptools_scm>=8.0",
-    "setuptools_scm_git_archive>=1.1",
-    "build>=1.0.0"
-]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools]
-include-package-data = true
-zip-safe = false
-
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["scaleforge*"]
-exclude = ["tests*", "*__pycache__*"]
+
+[build-system]
+requires = ["setuptools>=67", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project.scripts]
 scaleforge = "scaleforge.cli.main:cli"
 
 [project.optional-dependencies]
-
-# Runtime heavy extras
-torch = ["torch", "realesrgan"]
-
 gui = [
     "kivy>=2.3.0"
 ]
 # Runtime heavy extras
 torch = [
     "torch>=2.0.0; sys_platform != 'win32'",
-    "torch>=2.0.0+cpu; sys_platform == 'win32'",
     "torch>=2.0.0; sys_platform == 'win32'",
     "realesrgan==0.2.5.0", 
     "basicsr==1.4.2",
@@ -73,9 +49,5 @@ dev = [
     "pytest-mock>=3.0",
     "ipython>=8.0",
 ]
-    "build>=1.0",
-]
-]
-
 [tool.ruff]
 extend-exclude = ["build", "dist", "*.egg-info"]
