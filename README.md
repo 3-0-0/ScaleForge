@@ -72,7 +72,7 @@ ScaleForge automatically detects your GPU capabilities and caches the results fo
 * **Key information**:
 
   * GPU vendor (Nvidia / AMD / Intel)
-  * Recommended backend (torch-cuda / torch-rocm / torch-cpu / ncnn-vulkan)
+  * Recommended backend (e.g. `torch-eager-cuda`, `torch-eager-rocm`, `torch-eager-cpu`, `ncnn-ncnn-vulkan`)
   * Performance capabilities (e.g., max tile size, megapixels)
   * Detection timestamp
 
@@ -88,8 +88,9 @@ scaleforge detect-backend --debug
 
 **Environment override**
 
-Set `SCALEFORGE_BACKEND` to force a backend:
-`torch-cuda`, `torch-rocm`, `torch-cpu`, `ncnn-vulkan`.
+Set `SCALEFORGE_BACKEND` to force a backend using its canonical id
+(`torch-eager-cuda`, `torch-eager-cpu`, `cpu-pillow`, `ncnn-ncnn-cpu`).
+`SCALEFORGE_DEVICE` may override only the device portion during auto-detect.
 
 ---
 

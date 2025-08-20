@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
+from importlib import metadata as im
 
 import click
 
@@ -17,9 +18,6 @@ DEV_MODE = False
 
 # Placeholder for lazy config loader; tests monkeypatch this attribute
 load_config = None  # type: ignore[assignment]
-
-
-from importlib import metadata as im
 
 
 def _sf_version() -> str:
@@ -65,15 +63,18 @@ def cli(dev: bool) -> None:
 def detect_backend(debug: bool) -> None:
     """Detect the best compute backend and print the decision."""
     try:
-        try:
-            from scaleforge.backend.selector import detect_backend as _detect  # type: ignore
-        except Exception:
-            from scaleforge.backend.detector import detect_backend as _detect  # type: ignore
+        from scaleforge.backend.selector import get_backend_alias
     except Exception as e:  # pragma: no cover - import error path
         click.echo(f"[detect-backend] import error: {e}", err=True)
         raise SystemExit(2)
 
-    click.echo(_detect(debug=debug))
+    alias, reasons = get_backend_alias(debug=debug)
+    if debug:
+        click.echo(alias)
+        for r in reasons:
+            click.echo(f"- {r}")
+    else:
+        click.echo(alias)
 
 
 @cli.group("model")

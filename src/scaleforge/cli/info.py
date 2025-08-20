@@ -6,7 +6,7 @@ import platform
 
 import click
 
-from scaleforge.backend.detector import detect_backend
+from scaleforge.backend.selector import get_backend_alias
 from .main import _CFG, cli, load_config
 
 
@@ -22,7 +22,7 @@ def info() -> None:
             loader = _load_config
         cfg = loader()
 
-    click.echo(f"Detected backend: {detect_backend()}")
+    click.echo(f"Detected backend: {get_backend_alias()[0]}")
     if cfg is not None:
         click.echo(f"Database path: {cfg.database_path}")
         click.echo(f"Log dir: {cfg.log_dir}")

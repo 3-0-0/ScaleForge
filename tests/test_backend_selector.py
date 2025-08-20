@@ -10,18 +10,18 @@ from scaleforge.backend.vulkan_backend import VulkanBackend
 @pytest.mark.parametrize(
     "code,expected",
     [
-        ("torch-cuda", TorchBackend),
-        ("torch-rocm", TorchBackend),
-        ("torch-mps", TorchBackend),
-        ("torch-cpu", TorchBackend),
-        ("ncnn-vulkan", VulkanBackend),
+        ("torch-eager-cuda", TorchBackend),
+        ("torch-eager-rocm", TorchBackend),
+        ("torch-eager-mps", TorchBackend),
+        ("torch-eager-cpu", TorchBackend),
+        ("ncnn-ncnn-vulkan", VulkanBackend),
     ],
 )
 
 def test_detected_backend_mapping(monkeypatch, code, expected):
     monkeypatch.delenv("SCALEFORGE_BACKEND", raising=False)
     monkeypatch.setenv("SF_STUB_UPSCALE", "1")
-    with patch("scaleforge.backend.detector.detect_backend", return_value=code):
+    with patch("scaleforge.backend.selector.get_backend_alias", return_value=(code, [])):
         backend = get_backend()
     assert isinstance(backend, expected)
 
@@ -29,8 +29,8 @@ def test_detected_backend_mapping(monkeypatch, code, expected):
 @pytest.mark.parametrize(
     "code,expected",
     [
-        ("torch-cpu", TorchBackend),
-        ("ncnn-vulkan", VulkanBackend),
+        ("torch-eager-cpu", TorchBackend),
+        ("ncnn-ncnn-vulkan", VulkanBackend),
     ],
 )
 

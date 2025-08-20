@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+from scaleforge.backend.spec import BackendSpec
+from pathlib import Path
+import json
+
+
 def get_gpu_info() -> dict:
     try:
         from scaleforge.backend.selector import get_gpu_info as _impl  # type: ignore
@@ -22,33 +27,38 @@ def get_gpu_info() -> dict:
             pass
         return info
 
-def detect_backend(debug: bool = False) -> str:
-    try:
-        from scaleforge.backend.selector import detect_backend as _impl  # type: ignore
-        return _impl(debug=debug)
-    except ImportError:
-        info = get_gpu_info()
-        if info.get("cuda"): return "torch-cuda"
-        if info.get("rocm"): return "torch-rocm"
-        if info.get("mps"):  return "torch-mps"
-        return "torch-cpu"
 
-from pathlib import Path
-import json
+def detect_backend(debug: bool = False) -> tuple[BackendSpec, list[str]]:
+    """Detect the most appropriate backend and return ``BackendSpec`` and reasons."""
+    info = get_gpu_info()
+    reasons: list[str] = []
+    if info.get("cuda"):
+        reasons.append("CUDA available")
+        return BackendSpec("torch", "eager", "cuda"), reasons
+    if info.get("rocm"):
+        reasons.append("ROCm available")
+        return BackendSpec("torch", "eager", "rocm"), reasons
+    if info.get("mps"):
+        reasons.append("MPS available")
+        return BackendSpec("torch", "eager", "mps"), reasons
+    reasons.append("No GPU found; using CPU")
+    return BackendSpec("torch", "eager", "cpu"), reasons
 
 def detect_gpu_vendor() -> str:
     v = get_gpu_info().get("vendor", "cpu")
     return {"nvidia": "nvidia", "amd": "amd", "apple": "apple"}.get(v, v)
 
+
 def detect_gpu_caps(debug: bool = False) -> dict:
     info = get_gpu_info()
+    spec, _reasons = detect_backend(debug)
     return {
-        "backend": detect_backend(debug),
-        "vendor":  info.get("vendor", "cpu"),
-        "cuda":    bool(info.get("cuda")),
-        "rocm":    bool(info.get("rocm")),
-        "mps":     bool(info.get("mps")),
-        "source":  "auto" if not debug else "auto-debug",
+        "backend": spec.alias,
+        "vendor": info.get("vendor", "cpu"),
+        "cuda": bool(info.get("cuda")),
+        "rocm": bool(info.get("rocm")),
+        "mps": bool(info.get("mps")),
+        "source": "auto-debug" if debug else "auto",
     }
 
 def load_caps(path: str | Path) -> dict:

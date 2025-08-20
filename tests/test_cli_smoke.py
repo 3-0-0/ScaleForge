@@ -1,28 +1,26 @@
 from click.testing import CliRunner
 from scaleforge.cli import cli
-from scaleforge.backend.detector import detect_backend
+from scaleforge.backend.selector import get_backend_alias
+from PIL import Image
+from scaleforge.config.loader import AppConfig
 
 def test_cli_help_command():
     r = CliRunner().invoke(cli, ["--help"])
     assert r.exit_code == 0
 
-def test_cli_detect_backend_debug():
+def test_cli_detect_backend_debug(monkeypatch):
+    monkeypatch.setenv("SCALEFORGE_BACKEND", "cpu-pillow")
     r = CliRunner().invoke(cli, ["detect-backend", "--debug"])
-    # Temporarily accept any exit code to unblock CI
-    assert r.exit_code >= 0  # Just verify it didn't crash
-    if r.exit_code == 0:
-        assert "torch-cpu" in r.output
+    assert r.exit_code == 0
+    assert "cpu-pillow" in r.output
 
 
-def test_cli_help_info_command():
-    backend = detect_backend()
+def test_cli_help_info_command(monkeypatch):
+    monkeypatch.setenv("SCALEFORGE_BACKEND", "cpu-pillow")
+    backend, _ = get_backend_alias()
     r = CliRunner().invoke(cli, ["info"])
     assert r.exit_code == 0
     assert backend in r.output
-
-from PIL import Image
-from scaleforge.config.loader import AppConfig
-
 
 def test_cli_run_stub(tmp_path, monkeypatch):
     img = tmp_path / "sample.png"
