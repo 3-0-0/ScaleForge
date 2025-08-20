@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from click.testing import CliRunner
 from types import SimpleNamespace
+import hashlib
 
 from scaleforge.cli.main import cli
 from scaleforge.models import downloader as downloader_mod
@@ -59,4 +60,32 @@ def test_model_install_download_error(tmp_path, monkeypatch):
     r = CliRunner().invoke(cli, ["model", "install", "foo"])
     assert r.exit_code == 1
     assert "network fail" in r.output
+
+
+def _setup_downloader(tmp_path, info, monkeypatch):
+    monkeypatch.setattr(downloader_mod, "load_config", lambda: SimpleNamespace(model_dir=tmp_path))
+    dl = ModelDownloader(model_dir=tmp_path)
+    entry = downloader_mod._ResolvedModel(info=info, path=tmp_path / "foo.bin")
+    dl._registry = {"foo": entry}
+    return dl
+
+
+def test_download_model_with_url_dict(tmp_path, monkeypatch):
+    data = b"hello"
+    sha = hashlib.sha256(data).hexdigest()
+    info = {"url": "http://example.com/foo.bin", "sha256": sha}
+    dl = _setup_downloader(tmp_path, info, monkeypatch)
+    monkeypatch.setattr(ModelDownloader, "_download", lambda self, url, dest: dest.write_bytes(data))
+    path = dl.download_model("foo")
+    assert path.read_bytes() == data
+
+
+def test_download_model_with_urls_dict(tmp_path, monkeypatch):
+    data = b"world"
+    sha = hashlib.sha256(data).hexdigest()
+    info = {"urls": ["http://a/foo.bin", "http://b/foo.bin"], "sha256": sha}
+    dl = _setup_downloader(tmp_path, info, monkeypatch)
+    monkeypatch.setattr(ModelDownloader, "_download", lambda self, url, dest: dest.write_bytes(data))
+    path = dl.download_model("foo")
+    assert path.read_bytes() == data
 
