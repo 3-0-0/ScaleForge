@@ -1,97 +1,78 @@
-"""Model registry utilities.
-
-The original project defined the registry entries using :mod:`pydantic` models.
-For the purposes of the exercises the heavy dependency on Pydantic is avoided
-and a small hand written validator is used instead.  Only the behaviour needed
-by the tests is implemented: loading JSON/YAML files and performing some basic
-validation of model entries.
-"""
+"""Model registry utilities."""
 
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Tuple
 
-# ``yaml`` is optional; when missing we fall back to a tiny parser based on
-# ``json`` which is sufficient for the simple test data.
 try:  # pragma: no cover - optional dependency
     import yaml  # type: ignore
 except Exception:  # pragma: no cover
     yaml = None  # type: ignore
+
+_HEX_RE = re.compile(r"^[a-f0-9]{64}$")
 
 
 # ---------------------------------------------------------------------------
 # Validation helpers
 # ---------------------------------------------------------------------------
 
-_HEX = set("0123456789abcdefABCDEF")
 
-
-def _coerce_to_list(data: Union[Dict[str, Any], List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
-    if isinstance(data, dict) and "models" in data:
-        models = data["models"]
-        if isinstance(models, list):
-            return models
-        raise ValueError("`models` must be a list")
-    if isinstance(data, list):
-        return data
-    raise ValueError("Expected dict with 'models' or a list of entries")
-
-
-def _validate_item(idx: int, raw: Dict[str, Any]) -> Optional[str]:
-    """Return an error string for *raw* or ``None`` when valid."""
-
-    name = raw.get("name")
-    if not isinstance(name, str) or not name:
-        return "item %d: name must be a non-empty string" % idx
-
-    sha256 = raw.get("sha256")
-    if not (isinstance(sha256, str) and len(sha256) == 64 and all(c in _HEX for c in sha256)):
-        return f"item {idx}: sha256 must be 64 hex characters"
-
-    urls = raw.get("urls")
-    url = raw.get("url")
-    if urls is not None:
-        if not isinstance(urls, list) or len(urls) == 0:
-            return f"item {idx}: urls must be a non-empty list if provided"
-    elif not url:
-        return f"item {idx}: must supply either `url` or non-empty `urls`"
-
-    size = raw.get("size_bytes")
-    if size is not None and (not isinstance(size, int) or size < 0):
-        return f"item {idx}: size_bytes must be a non-negative integer"
-
-    return None
-
-
-def validate_registry(data: Union[Dict[str, Any], List[Dict[str, Any]]]) -> Tuple[bool, List[str]]:
-    """Validate registry entries returning ``(ok, [errors])``."""
-
+def _manual_validate(reg: Dict[str, Any]) -> List[str]:
     errors: List[str] = []
-    try:
-        items = _coerce_to_list(data)
-    except Exception as e:  # pragma: no cover - defensive
-        return False, [str(e)]
-
-    names_seen: set[str] = set()
-    dupes: set[str] = set()
-
-    for idx, raw in enumerate(items):
-        err = _validate_item(idx, raw)
-        if err:
-            errors.append(err)
+    models = reg.get("models")
+    if not isinstance(models, dict):
+        return ["'models' must be an object"]
+    for name, entry in models.items():
+        if not isinstance(entry, dict):
+            errors.append(f"{name}: entry must be an object")
             continue
+        info = entry.get("info")
+        if not isinstance(info, dict):
+            errors.append(f"{name}: missing info object")
+            continue
+        sha = info.get("sha256")
+        if not (isinstance(sha, str) and _HEX_RE.match(sha)):
+            errors.append(f"{name}: info.sha256 must be 64 hex characters")
+        urls = info.get("urls")
+        url = info.get("url")
+        if urls is not None:
+            if not (
+                isinstance(urls, list)
+                and len(urls) > 0
+                and all(isinstance(u, str) for u in urls)
+            ):
+                errors.append(
+                    f"{name}: info.urls must be a non-empty list of strings"
+                )
+        elif not isinstance(url, str):
+            errors.append(
+                f"{name}: info must include 'url' or non-empty 'urls'"
+            )
+    return errors
 
-        name = raw["name"]
-        if name in names_seen:
-            dupes.add(name)
-        names_seen.add(name)
 
-    if dupes:
-        errors.append("duplicate names: " + ", ".join(sorted(dupes)))
+def validate_registry(reg: Dict[str, Any]) -> Tuple[bool, List[str]]:
+    """Validate registry mapping using JSON Schema when available."""
 
-    return (len(errors) == 0), errors
+    try:  # pragma: no cover - optional dependency
+        import jsonschema  # type: ignore
+        from importlib import resources
+
+        schema_text = (
+            resources.files(__package__)
+            .joinpath("registry.schema.json")
+            .read_text("utf-8")
+        )
+        schema = json.loads(schema_text)
+        validator = jsonschema.Draft7Validator(schema)
+        errors = [e.message for e in validator.iter_errors(reg)]
+        return len(errors) == 0, errors
+    except Exception:
+        errors = _manual_validate(reg)
+        return len(errors) == 0, errors
 
 
 # ---------------------------------------------------------------------------
@@ -108,11 +89,11 @@ def _load_text(path: Path) -> Dict[str, Any]:
         data = yaml.safe_load(text)
     else:
         data = json.loads(text)
-    return {"models": _coerce_to_list(data)}
+    return data
 
 
 def load_registry_file(path: Path) -> Dict[str, Any]:
-    """Load a registry JSON or YAML file and normalise to ``{"models": [...]}``."""
+    """Load a registry JSON or YAML file."""
 
     return _load_text(path)
 
@@ -125,10 +106,22 @@ def load_effective_registry() -> Dict[str, Any]:  # pragma: no cover - trivial
         p = here / name
         if p.exists():
             try:
-                return load_registry_file(p)
+                data = load_registry_file(p)
             except Exception:
-                pass
-    return {"models": []}
+                data = {"models": {}}
+            meta: Dict[str, Any] = {}
+            try:  # pragma: no cover - optional dependency
+                import jsonschema  # type: ignore  # noqa: F401
+            except Exception:
+                meta["warning"] = "registry validation skipped: jsonschema not installed"
+            else:
+                ok, errors = validate_registry(data)
+                if not ok:
+                    meta["errors"] = errors
+            if meta:
+                data.setdefault("_meta", {}).update(meta)
+            return data
+    return {"models": {}}
 
 
 __all__ = ["validate_registry", "load_registry_file", "load_effective_registry"]
