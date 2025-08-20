@@ -1,8 +1,0 @@
-name: smoke (retired)
-on:
-  workflow_dispatch:
-jobs:
-  noop:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Legacy workflow retired; use demo-smoke instead."
