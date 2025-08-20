@@ -15,6 +15,9 @@ import click
 # Global development-mode flag used by subcommands
 DEV_MODE = False
 
+# Placeholder for lazy config loader; tests monkeypatch this attribute
+load_config = None  # type: ignore[assignment]
+
 
 from importlib import metadata as im
 
@@ -35,18 +38,19 @@ def _sf_version() -> str:
 @click.version_option(version=_sf_version(), message="ScaleForge %(version)s")
 def cli(dev: bool) -> None:
     """ScaleForge command line interface."""
-    global DEV_MODE
+    global DEV_MODE, load_config, _CFG
     DEV_MODE = dev
     if dev:
         click.echo("🛠️  Developer mode enabled")
 
     # Environment setup occurs lazily here so that importing this module is
-    # inexpensive.  Helpers such as ``load_config`` are imported once and kept
-    # available for subcommands through the global ``_CFG`` variable.
-    from scaleforge.config.loader import load_config
+    # inexpensive.  ``load_config`` is imported once and exposed as a module
+    # attribute so tests can monkeypatch it.
+    if load_config is None:
+        from scaleforge.config.loader import load_config as _load_config
+        load_config = _load_config
     from scaleforge.db.models import get_conn, init_db
 
-    global _CFG
     _CFG = load_config()
     with get_conn(_CFG.database_path) as conn:
         init_db(conn)
