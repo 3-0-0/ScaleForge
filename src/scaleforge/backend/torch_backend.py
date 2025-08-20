@@ -166,7 +166,10 @@ class TorchRealESRGANBackend(Backend):
 
         logger.info(f"Upscaling to {scale}x using model '{self.model_name}'")
         img = Image.open(src).convert("RGB")
-        result = self._upsampler.predict(img)
+
+        import asyncio  # Lazy import to keep startup light
+
+        result = await asyncio.to_thread(self._upsampler.predict, img)
 
         dst.parent.mkdir(parents=True, exist_ok=True)
         result.save(dst)
