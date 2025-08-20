@@ -28,7 +28,8 @@ scaleforge = "scaleforge.cli.main:cli"
 
 [project.optional-dependencies]
 gui = [
-    "kivy>=2.3.0"
+    "kivy>=2.3.0",
+    "watchdog>=4.0.0"
 ]
 # Runtime heavy extras
 torch = [
