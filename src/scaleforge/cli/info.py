@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import click
 
-from .main import _CFG, _sf_version, cli, load_config
+from .main import _CFG, cli, load_config
 
 
 @cli.command("info")
@@ -45,7 +45,7 @@ def info() -> None:
     click.echo("Platform:")
     click.echo(f"  OS: {platform.platform()}")
     click.echo(f"  Python: {platform.python_version()}")
-    click.echo(f"  Scaleforge: {_sf_version()} ({sf_path})")
+    click.echo(f"  Scaleforge: {sf.__version__} ({sf_path})")
     click.echo()
 
     click.echo("Packages:")

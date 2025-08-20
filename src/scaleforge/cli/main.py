@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
-from importlib import metadata as im
+
+from scaleforge import __version__
 
 import click
 
@@ -19,21 +20,9 @@ DEV_MODE = False
 # Placeholder for lazy config loader; tests monkeypatch this attribute
 load_config = None  # type: ignore[assignment]
 
-
-def _sf_version() -> str:
-    try:
-        return im.version("scaleforge")
-    except Exception:
-        try:
-            from scaleforge import __version__  # type: ignore
-            return __version__
-        except Exception:
-            return "0.0.0"
-
-
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
 @click.option("--dev", is_flag=True, help="Enable developer mode (debug logging, console, etc)")
-@click.version_option(version=_sf_version(), message="ScaleForge %(version)s")
+@click.version_option(version=__version__, message="scaleforge %(version)s")
 def cli(dev: bool) -> None:
     """ScaleForge command line interface."""
     global DEV_MODE, load_config, _CFG
@@ -75,6 +64,12 @@ def detect_backend(debug: bool) -> None:
             click.echo(f"- {r}")
     else:
         click.echo(alias)
+
+
+@cli.command("version")
+def version_cmd() -> None:
+    """Print the ScaleForge version."""
+    click.echo(f"scaleforge {__version__}")
 
 
 @cli.group("model")

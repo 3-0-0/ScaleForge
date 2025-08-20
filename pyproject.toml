@@ -1,6 +1,6 @@
 [project]
 name = "scaleforge"
-version = "0.4.0-alpha"
+version = "0.4.1a1"
 description = "ScaleForge – portable image upscaler powered by Real-ESRGAN"
 readme = {file = "README.md", content-type = "text/markdown"}
 license = "MIT"

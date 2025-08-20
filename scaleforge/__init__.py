@@ -25,3 +25,8 @@ if _SRC.exists():  # pragma: no branch - always true in tests
         sys.path.insert(0, str(_SRC_ROOT))
     __path__.append(str(_SRC))  # type: ignore[name-defined]
 
+try:  # pragma: no cover - best effort
+    from ._version import __version__ as __version__
+except Exception:
+    __version__ = "0"
+

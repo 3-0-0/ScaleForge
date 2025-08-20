@@ -1,19 +1,25 @@
 
-import io, time
+import io
+import time
 from pathlib import Path
+
 from click.testing import CliRunner
 import pytest
 pytest.importorskip("PIL")
 from PIL import Image
+
 from scaleforge.cli import cli
 
 def _mk_png_bytes(w=8, h=6, color=(200,100,50,255)):
     im = Image.new("RGBA", (w, h), color)
-    buf = io.BytesIO(); im.save(buf, format="PNG")
+    buf = io.BytesIO()
+    im.save(buf, format="PNG")
     return buf.getvalue()
 
 def test_dry_run_creates_no_files(tmp_path: Path):
-    src = tmp_path/"in"; dst = tmp_path/"out"; src.mkdir()
+    src = tmp_path / "in"
+    dst = tmp_path / "out"
+    src.mkdir()
     (src/"a.png").write_bytes(_mk_png_bytes())
     r = CliRunner().invoke(
         cli,
@@ -21,13 +27,17 @@ def test_dry_run_creates_no_files(tmp_path: Path):
         env={"SCALEFORGE_BACKEND": "cpu-pillow"},
     )
     assert r.exit_code == 0
-    assert "DRY-RUN" in r.output
+    assert "PLAN:" in r.output
+    assert not dst.exists()
     assert list(dst.rglob("*.png")) == []
 
 @pytest.mark.skip(reason="unstable in headless test environment")
 def test_overwrite_flag(tmp_path: Path):
-    src = tmp_path/"in"; dst = tmp_path/"out"; src.mkdir()
-    a = src/"a.png"; a.write_bytes(_mk_png_bytes(10,7,(10,20,30,255)))
+    src = tmp_path / "in"
+    dst = tmp_path / "out"
+    src.mkdir()
+    a = src / "a.png"
+    a.write_bytes(_mk_png_bytes(10,7,(10,20,30,255)))
     # First run (produce output)
     r1 = CliRunner().invoke(
         cli,
