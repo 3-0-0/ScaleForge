@@ -17,10 +17,20 @@ from dataclasses import dataclass
 import hashlib
 import urllib.request
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 from scaleforge.config.loader import load_config
 from scaleforge.models.registry import load_effective_registry
+
+
+def _resolved_urls(info: Dict[str, Any]) -> List[str]:
+    """Return a list of URLs from a registry entry dict."""
+
+    urls = info.get("urls")
+    if urls:
+        return list(urls)
+    url = info.get("url")
+    return [url] if url else []
 
 
 @dataclass
@@ -53,11 +63,10 @@ class ModelDownloader:
                 # Entries are assumed to have already been validated elsewhere;
                 # we simply skip obviously malformed ones.
                 name = raw.get("name")
-                url = raw.get("url")
-                urls = raw.get("urls")
-                if not name or (not url and not urls):
+                urls = _resolved_urls(raw)
+                if not name or not urls:
                     continue
-                first_url = url or urls[0]
+                first_url = urls[0]
                 filename = raw.get("filename") or Path(first_url).name
                 resolved[name] = _ResolvedModel(info=raw, path=self.model_dir / filename)
             self._registry = resolved
@@ -85,7 +94,7 @@ class ModelDownloader:
         entry = self._entry(name)
         if not entry.path.exists():
             return False
-        return self._sha256(entry.path) == entry.info.sha256
+        return self._sha256(entry.path) == entry.info["sha256"]
 
     def download_model(self, name: str) -> Path:
         """Download ``name`` to the configured model directory.
@@ -96,9 +105,10 @@ class ModelDownloader:
         """
 
         entry = self._entry(name)
-        url = entry.info.resolved_urls()[0]
+        urls = _resolved_urls(entry.info)
+        url = urls[0]
         self._download(url, entry.path)
-        if self._sha256(entry.path) != entry.info.sha256:
+        if self._sha256(entry.path) != entry.info["sha256"]:
             entry.path.unlink(missing_ok=True)
             raise RuntimeError("Model checksum verification failed")
         return entry.path
