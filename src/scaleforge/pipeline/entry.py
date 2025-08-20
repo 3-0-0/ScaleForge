@@ -7,7 +7,8 @@ import shutil
 from pathlib import Path
 from typing import Sequence
 
-from scaleforge.backend.base import Backend, TorchBackend
+from scaleforge.backend.base import Backend
+from scaleforge.backend.torch_backend import TorchBackend
 from scaleforge.db.models import Job, JobStatus, get_conn
 from .queue import JobQueue
 
@@ -49,8 +50,8 @@ def run_pipeline(
 
     logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO)
 
-    # Use the simple TorchBackend stub for now; heavy backends can hook in later
-    backend: Backend = TorchBackend()
+    # Use the Torch backend in stub mode for now; heavy deps hook in later
+    backend: Backend = TorchBackend(stub=True)
 
     db_path = output_dir / "pipeline.db"
     queue = JobQueue(db_path, backend)

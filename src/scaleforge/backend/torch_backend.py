@@ -156,6 +156,11 @@ class TorchRealESRGANBackend(Backend):
         job: "Job" | None = None,
     ) -> None:
         """Upscale ``src`` to ``dst`` using the configured model."""
+        if self.stub:
+            logger.info("Stub mode: copying %s -> %s", src, dst)
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            Image.open(src).save(dst)
+            return
 
         if job and job.metadata and "scale" in job.metadata:
             scale = int(job.metadata["scale"])
