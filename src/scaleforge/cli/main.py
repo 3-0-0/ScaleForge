@@ -96,7 +96,10 @@ def model_install(model: str) -> None:
         return
 
     click.echo(f"📦 Installing model: {model}")
-    downloader.download_model(model)
+    try:
+        downloader.download_model(model)
+    except Exception as exc:  # pragma: no cover - network/IO errors
+        raise click.ClickException(str(exc)) from exc
     click.echo("✅ Done.")
 
 
