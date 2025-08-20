@@ -52,7 +52,6 @@ def batch_upscale(
     """Batch process images with upscaling."""
     input_path = Path(input_dir)
     output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
     
     # Collect files to process
     files: List[Path] = []
@@ -77,10 +76,17 @@ def batch_upscale(
         files = files[:limit]
     
     if dry_run:
-        print(f"DRY-RUN: Would process {len(files)} files:")
+        try:
+            from scaleforge.backend.selector import get_backend_alias
+            alias, _ = get_backend_alias()
+        except Exception:  # pragma: no cover - import error path
+            alias = "unknown"
         for f in files:
-            print(f"  {f} -> {output_path / (f.stem + suffix + f.suffix)}")
+            dst = output_path / (f.stem + suffix + f.suffix)
+            print(f"PLAN: {f} -> {dst} (scale={scale}, backend={alias})")
         return
+
+    output_path.mkdir(parents=True, exist_ok=True)
     
     # Process files
     processed = 0
