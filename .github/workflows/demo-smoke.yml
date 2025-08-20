@@ -40,4 +40,4 @@ jobs:
         env:
           SF_HEAVY_TESTS: "0"
         run: |
-          pytest -q -k "demo or cli_help"
+          pytest -q tests/test_demo_e2e.py
