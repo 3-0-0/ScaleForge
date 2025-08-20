@@ -38,6 +38,8 @@ def test_include_exclude_and_limit(tmp_path: Path):
     # Names should have suffix
     for p in outs:
         assert "@2x" in p.stem
+        with Image.open(p) as im:
+            assert im.size == (16,12)
 
 def test_dry_run_with_filters(tmp_path: Path):
     src = tmp_path / "in"; dst = tmp_path / "out"; src.mkdir()
