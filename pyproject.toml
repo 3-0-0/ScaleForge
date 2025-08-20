@@ -39,10 +39,7 @@ torch = [
     "xformers>=0.0.22; sys_platform != 'win32'",
     "charset-normalizer<3.0.0; python_version >= '3.12'"
 ]
-demo = [
-    "torch-stub>=0.1",
-    "realesrgan-stub>=0.1",
-]
+demo = []
 
 # Development extras (includes test/lint)
 dev = [
