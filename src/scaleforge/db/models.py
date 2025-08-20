@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -15,7 +16,7 @@ from pydantic import BaseModel, Field
 # Schema management
 # ---------------------------------------------------------------------------
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 DB_SCHEMA = """
 PRAGMA journal_mode=WAL;
@@ -35,7 +36,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     error TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    extra TEXT
+    metadata TEXT
 );
 
 CREATE TABLE IF NOT EXISTS outputs (
@@ -133,7 +134,7 @@ class Job(BaseModel):
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     attempts: int = 0
-    extra: str | None = None
+    metadata: dict[str, Any] | None = None
 
     model_config = {
         "populate_by_name": True,
@@ -159,10 +160,10 @@ class Job(BaseModel):
             None,
             now,
             now,
-            data.get("extra"),
+            json.dumps(data.get("metadata")) if data.get("metadata") is not None else None,
         )
         conn.execute(
-            "INSERT INTO jobs (src_path, hash, status, attempts, error, created_at, updated_at, extra) "
+            "INSERT INTO jobs (src_path, hash, status, attempts, error, created_at, updated_at, metadata) "
             "VALUES(?,?,?,?,?,?,?,?)",
             job_data,
         )
@@ -172,7 +173,10 @@ class Job(BaseModel):
 
     @classmethod
     def from_row(cls, row: sqlite3.Row) -> "Job":
-        return cls(**dict(row))
+        data = dict(row)
+        if data.get("metadata"):
+            data["metadata"] = json.loads(data["metadata"])
+        return cls(**data)
 
     @classmethod
     def pending(cls, conn: sqlite3.Connection, limit: int = 100) -> list["Job"]:

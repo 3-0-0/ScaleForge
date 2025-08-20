@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 import random
 from pathlib import Path
@@ -70,7 +71,10 @@ class JobQueue:
             try:
                 src = Path(job.src_path)
                 dst = src.with_suffix(src.suffix + ".x2.png")
-                await self.backend.upscale(src, dst)
+                kwargs = {}
+                if "job" in inspect.signature(self.backend.upscale).parameters:
+                    kwargs["job"] = job
+                await self.backend.upscale(src, dst, **kwargs)
                 with get_conn(self.db_path) as conn:
                     job.set_status(conn, JobStatus.DONE)
                 delay = 1.0  # reset back-off on success
