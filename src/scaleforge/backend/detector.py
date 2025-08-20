@@ -4,13 +4,21 @@ def get_gpu_info() -> dict:
     try:
         from scaleforge.backend.selector import get_gpu_info as _impl  # type: ignore
         return _impl()
-    except Exception:
+    except ImportError:
         info = {"vendor": "cpu", "cuda": False, "rocm": False, "mps": False}
         try:
             import torch  # type: ignore
-            info["vendor"] = "nvidia" if torch.cuda.is_available() else "cpu"
-            info["cuda"] = bool(torch.cuda.is_available())
-        except Exception:
+
+            if getattr(torch.backends, "mps", None) and torch.backends.mps.is_built() and torch.backends.mps.is_available():
+                info["vendor"] = "apple"
+                info["mps"] = True
+            elif getattr(torch.version, "hip", None) and torch.cuda.is_available():
+                info["vendor"] = "amd"
+                info["rocm"] = True
+            elif getattr(torch.version, "cuda", None) and torch.cuda.is_available():
+                info["vendor"] = "nvidia"
+                info["cuda"] = True
+        except (ImportError, AttributeError, RuntimeError):
             pass
         return info
 
@@ -18,10 +26,10 @@ def detect_backend(debug: bool = False) -> str:
     try:
         from scaleforge.backend.selector import detect_backend as _impl  # type: ignore
         return _impl(debug=debug)
-    except Exception:
+    except ImportError:
         info = get_gpu_info()
         if info.get("cuda"): return "torch-cuda"
-        if info.get("rocm"): return "torch-rocm" 
+        if info.get("rocm"): return "torch-rocm"
         if info.get("mps"):  return "torch-mps"
         return "torch-cpu"
 
