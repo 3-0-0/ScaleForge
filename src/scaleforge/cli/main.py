@@ -250,3 +250,45 @@ _CFG = None
 
 __all__ = ["cli"]
 
+
+@cli.group("models")
+def models_cmd() -> None:
+    """Interact with model registry."""
+
+
+@models_cmd.command("fetch")
+@click.argument("name", required=True)
+def models_fetch(name: str) -> None:
+    from pathlib import Path
+    from scaleforge.models.downloader import ModelDownloader
+    from scaleforge.errors import ModelChecksumMismatch, ModelDownloadError
+
+    downloader = ModelDownloader()
+    registry = downloader.get_registry()
+    if name not in registry:
+        available = ', '.join(sorted(registry))
+        raise click.BadParameter(f"Unknown model: {name}. Available: {available}")
+
+    steps: list[str] = []
+    try:
+        path = downloader.download_model(name, progress=steps.append)
+    except (ModelChecksumMismatch, ModelDownloadError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    if downloader.last_url:
+        click.echo(Path(downloader.last_url).name)
+    for s in steps:
+        click.echo(s)
+    click.echo(str(path))
+
+
+@models_cmd.command("validate")
+def models_validate() -> None:
+    from scaleforge.models.registry import load_effective_registry, validate_registry
+
+    data = load_effective_registry()
+    ok, errors = validate_registry(data)
+    if ok:
+        click.echo("OK")
+    else:
+        for e in errors[:3]:
+            click.echo(e)

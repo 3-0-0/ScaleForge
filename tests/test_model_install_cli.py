@@ -75,7 +75,7 @@ def test_download_model_with_url_dict(tmp_path, monkeypatch):
     sha = hashlib.sha256(data).hexdigest()
     info = {"url": "http://example.com/foo.bin", "sha256": sha}
     dl = _setup_downloader(tmp_path, info, monkeypatch)
-    monkeypatch.setattr(ModelDownloader, "_download", lambda self, url, dest: dest.write_bytes(data))
+    monkeypatch.setattr(ModelDownloader, "_download_with_retries", lambda self, url, dest, sha: dest.write_bytes(data))
     path = dl.download_model("foo")
     assert path.read_bytes() == data
 
@@ -85,7 +85,7 @@ def test_download_model_with_urls_dict(tmp_path, monkeypatch):
     sha = hashlib.sha256(data).hexdigest()
     info = {"urls": ["http://a/foo.bin", "http://b/foo.bin"], "sha256": sha}
     dl = _setup_downloader(tmp_path, info, monkeypatch)
-    monkeypatch.setattr(ModelDownloader, "_download", lambda self, url, dest: dest.write_bytes(data))
+    monkeypatch.setattr(ModelDownloader, "_download_with_retries", lambda self, url, dest, sha: dest.write_bytes(data))
     path = dl.download_model("foo")
     assert path.read_bytes() == data
 
