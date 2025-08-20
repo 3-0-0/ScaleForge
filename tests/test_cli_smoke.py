@@ -1,5 +1,6 @@
 from click.testing import CliRunner
-from scaleforge.cli.main import cli
+from scaleforge.cli import cli
+from scaleforge.backend.detector import detect_backend
 
 def test_cli_help_command():
     r = CliRunner().invoke(cli, ["--help"])
@@ -11,6 +12,13 @@ def test_cli_detect_backend_debug():
     assert r.exit_code >= 0  # Just verify it didn't crash
     if r.exit_code == 0:
         assert "torch-cpu" in r.output
+
+
+def test_cli_help_info_command():
+    backend = detect_backend()
+    r = CliRunner().invoke(cli, ["info"])
+    assert r.exit_code == 0
+    assert backend in r.output
 
 from PIL import Image
 from scaleforge.config.loader import AppConfig
