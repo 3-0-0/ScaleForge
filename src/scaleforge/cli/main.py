@@ -1,107 +1,90 @@
+"""ScaleForge CLI entrypoint.
 
-"""ScaleForge CLI entrypoint."""
+This module provides the main :func:`cli` group used by tests and by
+developer-facing tooling.  It keeps imports light at module import time and
+pulls in heavy dependencies lazily inside the commands themselves.
+"""
 
 from __future__ import annotations
-from importlib.metadata import version as get_version
 
-import asyncio
 import hashlib
-import json
-import logging
-import sys
 from pathlib import Path
-from typing import List, Optional
-
-from scaleforge.models.downloader import ModelDownloader
-from scaleforge.gui.app import ScaleForgeApp
-from scaleforge.db.models import get_conn
-
 
 import click
-import logging
 
-from pydantic import BaseModel
-DEV_MODE = False  # Global dev mode flag
+# Global development-mode flag used by subcommands
+DEV_MODE = False
 
-@click.version_option(version=get_version('scaleforge'), message='ScaleForge %(version)s')
-@click.group()
-@click.option('--dev', is_flag=True, help='Enable developer mode (debug logging, console, etc)')
-def cli(dev):
+
+from importlib import metadata as im
+
+
+def _sf_version() -> str:
+    try:
+        return im.version("scaleforge")
+    except Exception:
+        try:
+            from scaleforge import __version__  # type: ignore
+            return __version__
+        except Exception:
+            return "0.0.0"
+
+
+@click.group(context_settings={"help_option_names": ["-h", "--help"]})
+@click.option("--dev", is_flag=True, help="Enable developer mode (debug logging, console, etc)")
+@click.version_option(version=_sf_version(), message="ScaleForge %(version)s")
+def cli(dev: bool) -> None:
     """ScaleForge command line interface."""
     global DEV_MODE
     DEV_MODE = dev
     if dev:
         click.echo("🛠️  Developer mode enabled")
 
-# lazy-import in run()
-from scaleforge.cli.info import info as info_command
-from scaleforge.config.loader import load_config
-from scaleforge.db.models import init_db
-from scaleforge.backend.selector import get_backend
-from scaleforge.pipeline.queue import JobQueue
-from scaleforge.cli.info import info as info_command
+    # Environment setup occurs lazily here so that importing this module is
+    # inexpensive.  Helpers such as ``load_config`` are imported once and kept
+    # available for subcommands through the global ``_CFG`` variable.
+    from scaleforge.config.loader import load_config
+    from scaleforge.db.models import get_conn, init_db
 
-from .utils import print_status
-from scaleforge.db.models import get_conn, init_db
-# lazy-import in gui()
-# lazy-import where needed
-from scaleforge.models.registry import (
-    load_effective_registry,
-    load_registry_file,
-    validate_registry,
-)
-# lazy-import in run()
-from .utils import print_status
-DEV_MODE = False  # Global dev mode flag
+    global _CFG
+    _CFG = load_config()
+    with get_conn(_CFG.database_path) as conn:
+        init_db(conn)
 
-@click.version_option(version=get_version('scaleforge'), message='ScaleForge %(version)s')
-@click.group()
-@click.option('--dev', is_flag=True, help='Enable developer mode (debug logging, console, etc)')
-def cli(dev, debug: bool = False):
-    """ScaleForge command line interface."""
-    global DEV_MODE
-    DEV_MODE = dev
 
-@cli.command('detect-backend')
-@click.option('--debug', is_flag=True, default=False, help='Debug output')
-@click.option('--probe', is_flag=True, default=False, help='Run detailed probe')
-def detect_backend(debug: bool = False, probe: bool = False):
-    """Detect and display GPU backend capabilities."""
-    from scaleforge.backend.detector import detect_backend
-    print(detect_backend(debug=debug))
-    
-    cfg = load_config()
-    app_root = Path(str(cfg.model_dir)).parent
-    
-    if probe:
-        caps = detect_gpu_caps(app_root, force_probe=True)
-        source = "probed"
-    else:
-        caps = load_caps(app_root) or detect_gpu_caps(app_root, force_probe=True)
-        source = "cached" if not probe else "probed"
-    
-    if debug:
-        click.echo(f"Backend detection results (source: {source}):")
-        click.echo(json.dumps(caps, indent=2))
-    else:
-        click.echo(f"Detected backend: {caps.get('backend', 'unknown')}")
-    if dev:
-        click.echo("🛠️  Developer mode enabled")
+# ---------------------------------------------------------------------------
+# Subcommands
+
+
+@cli.command("detect-backend")
+@click.option("--debug", is_flag=True, help="Verbose backend detection.")
+def detect_backend(debug: bool) -> None:
+    """Detect the best compute backend and print the decision."""
+    try:
+        try:
+            from scaleforge.backend.selector import detect_backend as _detect  # type: ignore
+        except Exception:
+            from scaleforge.backend.detector import detect_backend as _detect  # type: ignore
+    except Exception as e:  # pragma: no cover - import error path
+        click.echo(f"[detect-backend] import error: {e}", err=True)
+        raise SystemExit(2)
+
+    click.echo(_detect(debug=debug))
 
 
 @cli.group("model")
-def model_command():
+def model_cmd() -> None:
     """Manage models (install, hash, etc)."""
-    pass
 
 
-@model_command.command("install")
+@model_cmd.command("install")
 @click.argument("model", required=True)
-def model_install(model):
-    """Install a model."""
+def model_install(model: str) -> None:
+    """Install a model from the registry."""
+    from scaleforge.models.downloader import ModelDownloader
+
     downloader = ModelDownloader()
     registry = downloader.get_registry()
-
     if model not in registry:
         available = "\n".join(f" • {name}" for name in registry.keys())
         raise click.BadParameter(
@@ -117,547 +100,69 @@ def model_install(model):
     click.echo("✅ Done.")
 
 
-@model_command.command("hash")
+@model_cmd.command("hash")
 @click.argument("path", type=click.Path(exists=True, dir_okay=False, path_type=Path))
-def model_hash(path: Path):
+def model_hash(path: Path) -> None:
     """Compute SHA256 hash of a model file."""
     sha256 = hashlib.sha256()
     with open(path, "rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
             sha256.update(chunk)
-    digest = sha256.hexdigest()
-    click.echo(f"🔢 SHA256: {digest}")
-
+    click.echo(f"🔢 SHA256: {sha256.hexdigest()}")
 
 
 @cli.command()
-def gui():
+def gui() -> None:
     """Launch the ScaleForge GUI."""
+    from scaleforge.gui.app import ScaleForgeApp
+
     ScaleForgeApp().run()
 
-    from scaleforge.gui.app import ScaleForgeApp  # lazy-import
-    """Launch the ScaleForge GUI."""
-    ScaleForgeApp().run()
 
-@cli.command("detect-backend")
-@click.option("--debug", is_flag=True, default=False, help="Debug output")
-def detect_backend(debug: bool, probe: bool) -> None:
-    """Detect and display GPU backend capabilities."""
-    from scaleforge.backend import detect_gpu_caps, load_caps
-    from scaleforge.config.loader import load_config
-    import json
-    
-    cfg = load_config()
-    app_root = Path(str(cfg.model_dir)).parent
-    
-    if probe:
-        caps = detect_gpu_caps(app_root, force_probe=True)
-        source = "probed"
-    else:
-        caps = load_caps(app_root) or detect_gpu_caps(app_root, force_probe=True)
-        source = "cached" if not probe else "probed"
-    
-    if debug:
-        click.echo(f"Backend detection results (source: {source}):")
-        click.echo(json.dumps(caps, indent=2))
-    else:
-        click.echo(f"Detected backend: {caps.get('backend', 'unknown')}")
-    
-    if debug:
-        click.echo(json.dumps({
-            "vendor": caps["vendor"],
-            "backend": caps["backend"],
-            "max_tile_size": caps["max_tile_size"],
-            "max_megapixels": caps["max_megapixels"],
-            "detected_at": caps["detected_at"],
-            "cache_path": str(app_root / "gpu_caps.json"),
-            "source": source
-        }, indent=2))
-    else:
-        click.echo(
-            f"backend={caps['backend']} "
-            f"vendor={caps['vendor']} "
-            f"tile={caps['max_tile_size']} "
-            f"mpx={caps['max_megapixels']:.1f} "
-            f"({source})"
-        )
-
-logger = logging.getLogger(__name__)
-
-SUPPORTED_EXTENSIONS = {
-    ".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tiff", ".gif"
-}
-
-def is_supported_image(path: Path) -> bool:
-    """Check if file has a supported image extension."""
-    return path.suffix.lower() in SUPPORTED_EXTENSIONS
-
-cfg = load_config()
-# Initialize database on first connection
-with get_conn(cfg.database_path) as conn:
-    init_db(conn)
-
-
-@click.group()
-def cli():
-    """ScaleForge - AI-powered image upscaler & resizer using Real-ESRGAN
-    
-    Supports: .jpg, .png, .bmp, .webp, .tiff, and .gif (first frame only)
-
-
-cli.add_command(model_command)
-
-
-    
-    Commands:
-      run    - Process images with AI upscaling
-      info   - List supported models and backends
-    """
-    pass
-
-      registry - Registry management commands
-    """
-    pass
-
-@cli.group("registry")
-def registry():
-    """Registry commands."""
-    pass
-
-@registry.command("validate")
-@click.option("--path", "path_", type=click.Path(exists=True, dir_okay=False, path_type=Path), required=False, help="YAML or JSON registry file")
-def registry_validate(path_: Optional[Path]):
-    """
-    Validate a registry file or the effective registry (builtins + user).
-    Exit codes: 0 valid, 5 invalid, 2 file/parse error.
-    """
-    try:
-        data = load_registry_file(path_) if path_ else load_effective_registry()
-    except FileNotFoundError as e:
-        click.echo(str(e))
-        sys.exit(2)
-    except Exception as e:
-        click.echo(f"Parse error: {e}")
-        sys.exit(2)
-
-    ok, errs = validate_registry(data)
-    if ok:
-        n = len(data.get("models", []))
-        click.echo(f"Registry valid ({n} models).")
-        sys.exit(0)
-    else:
-        click.echo("Registry invalid:")
-        for msg in errs:
-            click.echo(f"- {msg}")
-        sys.exit(5)
-
-cli.add_command(info_command)
-
-
-
-
-class PlanItem(BaseModel):
-    src: str
-    dst: str
-    scale: int = 2
-
-@cli.command()
-@click.option("--input", "-i", "inputs", type=click.Path(path_type=Path), 
-              multiple=True, help="Input file(s)/directory(ies) to process (supports glob patterns)")
-@click.argument("inputs_fallback", nargs=-1, type=click.Path(path_type=Path),
-               required=False)
-@click.option("--output", "-o", "out_dir", type=click.Path(path_type=Path),
-             default="${APP_ROOT}/outputs", show_default=True,
-             help="Output directory for processed files (default: ./outputs)")
-@click.option("--dry-run", is_flag=True,
-             help="Show planned operations without executing")
-@click.option("--verbose", is_flag=True,
-             help="Show detailed progress and statistics")
-@click.option("--model", default="realesrgan-x4plus", show_default=True,
-             help="""AI model to use. Available options:
-  - realesrgan-x4plus: General purpose images (default)
-  - realesr-general-x4v3: Enhanced details for photos
-  - realesr-animevideov3: Optimized for anime/cartoons
-
-Supported formats: .jpg, .png, .bmp, .webp, .tiff, .gif (first frame only)
-
-Examples:
-  scaleforge run -i *.jpg
-  scaleforge run photos/ --output upscaled/ --model realesr-general-x4v3
-  scaleforge run anime.gif --model realesr-animevideov3 --verbose""")
-@click.option("--concurrency", "-j", type=int, default=None,
-             help="Number of parallel jobs (default: CPU cores)")
-@click.option("--resume", is_flag=True,
-             help="Resume previous interrupted run")
-@click.option("--force-backend", type=click.Choice(["torch", "ncnn", "cpu"]),
-             help="Force specific backend (for debugging)")
-@click.option("--reset-db", is_flag=True,
-             help="Reset job tracking database (use with caution)")
-@click.option("--scale", type=click.Choice(["2", "4"], case_sensitive=False),
-             default=None,
-             help="Upscale factor (2 or 4). Overrides model default.")
-def run(inputs: List[Path], inputs_fallback: tuple[Path], dry_run: bool, 
-       out_dir: Path, model: str, concurrency: int, 
-       resume: bool, reset_db: bool, verbose: bool, 
-       scale: str | None = None, force_backend: str | None = None):
-    """Upscale images using AI models.
-    
-    Args:
-        verbose: If True, show detailed processing information
-        scale: Upscale factor (2=2x, 4=4x) or None for model default
-    """
-    scale_int = int(scale) if scale else None
-    # Track processing stats
-    processed_files = 0
-    success_count = 0
-    warning_count = 0
-    error_count = 0
-
-
-    def update_status(file: Path, status: str, message: str = ""):
-        """Update and display processing status."""
-        nonlocal processed_files, success_count, warning_count, error_count
-        processed_files += 1
-        if status == "success":
-            success_count += 1
-        elif status == "warning":
-            warning_count += 1
-        else:
-            error_count += 1
-        print_status(file, status, message)
-
-
-    if dry_run:
-        click.echo("🔍 Dry run mode - showing planned operations:")
-        for p in inputs + list(inputs_fallback):
-            if p.is_dir():
-                update_status(p, "success", "Directory will be processed")
-                for img in p.rglob("*.png"):
-                    update_status(img, "success", "Would upscale")
-            else:
-                update_status(p, "success", "Would upscale")
-        return
-
-    # Debug imports
-    try:
-        from scaleforge.models.downloader import ModelDownloader
-        click.echo("✅ ModelDownloader import successful") if verbose else None
-    except ImportError as e:
-        click.echo(f"❌ ModelDownloader import failed: {e}", err=True)
-        raise
-
-    if verbose:
-        click.echo("🚀 ScaleForge run started (verbose mode)")
-        click.echo(f"Inputs: {[*inputs, *inputs_fallback]}")
-        click.echo(f"Output directory: {out_dir}")
-        click.echo(f"Model: {model} (scale: {scale}x)")
-        click.echo(f"Concurrency: {concurrency}")
-
-        click.echo("\nProcessing status:")
-        click.echo("----------------")
-
-
-    downloader = ModelDownloader()
-    registry = downloader.get_registry()
-    
-    if model not in registry:
-        available = "\n".join(f" • {name}" for name in registry.keys())
-        raise click.BadParameter(
-            f"Unknown model: {model}\nAvailable models:\n{available}"
-        )
-        
-    if not downloader.is_model_downloaded(model):
-        click.echo(f"📥 Model not found locally: {model}")
-        click.echo(f"🔽 Downloading from: {registry[model]['url']}")
-        try:
-            ModelDownloader().download_model(model)
-            click.echo("✅ Download complete")
-        except Exception as e:
-            raise click.ClickException(f"Failed to download model: {str(e)}")
-    # Combine --input and positional args
-    all_inputs = list(inputs) + list(inputs_fallback)
-    if not all_inputs:
-        click.echo("❌ No input files provided.", err=True)
-        click.echo("Try:", err=True)
-        click.echo("  scaleforge run *.jpg", err=True)
-        click.echo("  scaleforge run photos/ --output output/", err=True)
-        raise click.Abort()
-
-
-    # Check for GIF limitations
-    from ..models.downloader import ModelDownloader
-    ModelDownloader.check_gif_limitations(all_inputs)
-
-
-
-Supported formats: .jpg, .png, .bmp, .webp, .tiff, .gif (first frame only)
-
-Examples:
-  scaleforge run -i *.jpg
-  scaleforge run photos/ --output upscaled/ --model realesr-general-x4v3
-  scaleforge run anime.gif --model realesr-animevideov3 --verbose""")
-@click.option("--concurrency", "-j", type=int, default=None,
-             help="Number of parallel jobs (default: CPU cores)")
-@click.option("--resume", is_flag=True,
-             help="Resume previous interrupted run")
-@click.option("--force-backend", type=click.Choice(["torch", "ncnn", "cpu"]),
-             help="Force specific backend (for debugging)")
-@click.option("--reset-db", is_flag=True,
-             help="Reset job tracking database (use with caution)")
-@click.option("--scale", type=click.Choice(["2", "4"], case_sensitive=False),
-             default=None,
-             help="Upscale factor (2 or 4). Overrides model default.")
-def run(
-    inputs: List[Path],
-    inputs_fallback: tuple[Path],
+@cli.command("run")
+@click.argument("input_path", type=click.Path(exists=True, path_type=str))
+@click.option("--output", "-o", type=click.Path(path_type=str), required=True, help="Output directory")
+@click.option("--scale", type=float, default=2.0, show_default=True, help="Upscale factor")
+@click.option("--dry-run", is_flag=True, help="Check pipeline without running heavy steps")
+@click.option("--resume", is_flag=True, help="Resume if partial outputs exist")
+@click.option("--verbose", is_flag=True, help="Verbose logging")
+def run_cmd(
+    input_path: str,
+    output: str,
+    scale: float,
     dry_run: bool,
-    out_dir: Path,
-    model: str,
-    concurrency: int,
-    reset_db: bool,
-    scale: Optional[str]
-):
-    # Lazy imports to avoid pulling torch/basicsr at CLI import time
-    from scaleforge.backend.selector import get_backend
-    from scaleforge.pipeline.queue import JobQueue
-    from scaleforge.models.downloader import ModelDownloader
-    """Upscale images using AI models.
-    
-    Args:
-        verbose: If True, show detailed processing information
-        scale: Upscale factor (2=2x, 4=4x) or None for model default
-    """
-    # Track processing stats
-    processed_files = 0
-    success_count = 0
-    warning_count = 0
-    error_count = 0
+    resume: bool,
+    verbose: bool,
+) -> None:
+    """Run the ScaleForge pipeline."""
+    from pathlib import Path
 
-
-    def update_status(file: Path, status: str, message: str = ""):
-        """Update and display processing status."""
-        nonlocal processed_files, success_count, warning_count, error_count
-        processed_files += 1
-        if status == "success":
-            success_count += 1
-        elif status == "warning":
-            warning_count += 1
-        else:
-            error_count += 1
-        print_status(file, status, message)
-
-
+    Path(output).mkdir(parents=True, exist_ok=True)
     if dry_run:
-        click.echo("🔍 Dry run mode - showing planned operations:")
-        for p in inputs + list(inputs_fallback):
-            if p.is_dir():
-                update_status(p, "success", "Directory will be processed")
-                for img in p.rglob("*.png"):
-                    update_status(img, "success", "Would upscale")
-            else:
-                update_status(p, "success", "Would upscale")
+        click.echo(
+            f"[dry-run] input={input_path} output={output} scale={scale} resume={resume} verbose={verbose}"
+        )
         return
 
-    # Debug imports
     try:
-        # lazy-import where needed
-        click.echo("✅ ModelDownloader import successful") if verbose else None
-    except ImportError as e:
-        click.echo(f"❌ ModelDownloader import failed: {e}", err=True)
-        raise
+        from scaleforge.pipeline.entry import run_pipeline  # type: ignore
+    except Exception as e:  # pragma: no cover - import error path
+        click.echo(f"[run] pipeline import error: {e}", err=True)
+        raise SystemExit(2)
 
-    if verbose:
-        click.echo("🚀 ScaleForge run started (verbose mode)")
-        click.echo(f"Inputs: {[*inputs, *inputs_fallback]}")
-        click.echo(f"Output directory: {out_dir}")
-        click.echo(f"Model: {model} (scale: {scale}x)")
-        click.echo(f"Concurrency: {concurrency}")
-
-        click.echo("\nProcessing status:")
-        click.echo("----------------")
+    ok = run_pipeline(
+        input_path=input_path,
+        output_dir=output,
+        scale=scale,
+        resume=resume,
+        verbose=verbose,
+    )
+    raise SystemExit(0 if ok else 1)
 
 
-    downloader = ModelDownloader()
-    registry = downloader.get_registry()
-    
-    if model not in registry:
-        available = "\n".join(f" • {name}" for name in registry.keys())
-        raise click.BadParameter(
-            f"Unknown model: {model}\nAvailable models:\n{available}"
-        )
-        
-    if not downloader.is_model_downloaded(model):
-        click.echo(f"📥 Model not found locally: {model}")
-        click.echo(f"🔽 Downloading from: {registry[model]['url']}")
-        try:
-            ModelDownloader().download_model(model)
-            click.echo("✅ Download complete")
-        except Exception as e:
-            raise click.ClickException(f"Failed to download model: {str(e)}")
-    # Combine --input and positional args
-    all_inputs = list(inputs) + list(inputs_fallback)
-    if not all_inputs:
-        click.echo("❌ No input files provided.", err=True)
-        click.echo("Try:", err=True)
-        click.echo("  scaleforge run *.jpg", err=True)
-        click.echo("  scaleforge run photos/ --output output/", err=True)
-        raise click.Abort()
+# Global configuration populated during ``cli`` invocation
+_CFG = None
 
 
-    # Check for GIF limitations
-    from ..models.downloader import ModelDownloader
-    ModelDownloader.check_gif_limitations(all_inputs)
-
-
-        
-    # Validate input files exist
-    missing_files = [str(p) for p in all_inputs if not p.exists()]
-    if missing_files:
-
-
-        # Update status for missing files
-        for f in missing_files:
-            update_status(Path(f), "error", "File not found")
-
-
-
-
-        for f in missing_files:
-            update_status(Path(f), "error", "File not found")
-
-
-        click.echo("❌ Some input files could not be found:", err=True)
-        for f in missing_files:
-            click.echo(f"  {f}", err=True)
-        click.echo("\nPlease check the paths and try again.", err=True)
-        raise click.Abort()
-        
-    if reset_db:
-        from scaleforge.db.models import reset_db
-        reset_db(cfg.database_path)
-        click.echo("Database reset complete")
-
-@cli.command()
-@click.option("--input", "inputs", type=click.Path(path_type=Path), 
-              multiple=True, help="Input file(s)/directory(ies) to process")
-@click.argument("inputs_fallback", nargs=-1, type=click.Path(path_type=Path),
-               required=False)
-@click.option("--output", "out_dir", type=click.Path(path_type=Path),
-             default="${APP_ROOT}/outputs", show_default=True,
-             help="Output directory path for processed files")
-@click.option("--dry-run", is_flag=True,
-             help="Generate processing plan without execution")
-@click.option("--scale", type=int, default=2, show_default=True,
-             help="Upscale factor (2=2x, 4=4x etc.)")
-@click.option("--model", default="realesrgan-x4plus", show_default=True,
-             help="AI model: realesrgan-x4plus|realesrgan-x4plus-anime")
-@click.option("-j", "--concurrency", default=1, show_default=True,
-             help="Max parallel jobs (CPU/GPU dependent)")
-@click.option("--resume", is_flag=True,
-             help="Resume previous incomplete jobs")
-@click.option("--reset-db", is_flag=True,
-             help="Reset job tracking database (use with caution)")
-
-def run(inputs: List[Path], inputs_fallback: tuple[Path], dry_run: bool, 
-       out_dir: Path, scale: int, model: str, concurrency: int, 
-       resume: bool, reset_db: bool):
-    """Upscale images using AI models.
-    
-    Examples:
-      scaleforge run --input photo.jpg --output ./results
-      scaleforge run --input ./photos --scale 4 -j 4
-      scaleforge run *.png --model realesrgan-x4plus-anime
-      scaleforge run --input file1.jpg file2.jpg  # Alternative syntax
-    """
-    # Combine --input and positional args
-    all_inputs = list(inputs) + list(inputs_fallback)
-    if not all_inputs:
-        raise click.UsageError("No input files specified")
-    if reset_db:
-        from scaleforge.db.models import reset_db
-        reset_db(cfg.database_path)
-        click.echo("Database reset complete")
-
-    out_dir = Path(str(out_dir).replace("${APP_ROOT}", str(cfg.model_dir.parent)))
-    
-    try:
-        out_dir.mkdir(parents=True, exist_ok=True)
-        # Test write permission
-        (out_dir / ".permission_test").touch()
-        (out_dir / ".permission_test").unlink()
-    except OSError as e:
-        click.echo(f"Warning: Cannot write to output directory ({e}). Using temp directory instead.")
-        import tempfile
-        out_dir = Path(tempfile.mkdtemp(prefix="scaleforge-output-"))
-        click.echo(f"Using temporary directory: {out_dir}")
-
-    targets: List[PlanItem] = []
-    skipped_files = 0
-    gif_warning_shown = False
-    
-    for p in inputs:
-        if p.is_dir():
-            for img in p.rglob("*.png"):
-            for img in p.rglob("*"):
-                if not is_supported_image(img):
-                    if verbose:
-                        click.echo(f"Skipping unsupported file: {img}")
-                    skipped_files += 1
-                    continue
-                    
-                if img.suffix.lower() == ".gif" and verbose and not gif_warning_shown:
-                    click.echo("⚠️  Warning: Animated GIFs are not fully supported - only the first frame will be processed")
-                    gif_warning_shown = True
-                    
-                targets.append(PlanItem(
-                    src=str(img),
-                    dst=str(out_dir / img.name),
-                    scale=scale
-                ))
-                if verbose:
-                    click.echo(f"• Queued: {img} → {out_dir/img.name}")
-        else:
-            targets.append(PlanItem(
-                src=str(p),
-                dst=str(out_dir / p.name),
-                scale=scale
-            ))
-            if verbose:
-                click.echo(f"• Queued: {p} → {out_dir/p.name}")
-
-    if verbose and targets:
-        click.echo(f"\nProcessing {len(targets)} files with {concurrency} workers...")
-
-    if dry_run:
-        if verbose:
-            click.echo("\nSummary:")
-            click.echo(f" • Files queued:      {len(targets)}")
-            click.echo(f" • Files skipped:     {skipped_files}")
-            click.echo(f" • Output directory:  {out_dir}")
-        click.echo(json.dumps([t.model_dump() for t in targets], indent=2))
-        sys.exit(0)
-
-    backend = get_backend(model_name=model)
-    jq = JobQueue(cfg.database_path, backend, concurrency)
-    if not resume:
-        jq.enqueue(targets)
-    backend = get_backend()
-    logger.info(f"Backend initialized: {type(backend).__name__}")
-    jq = JobQueue(cfg.database_path, backend, concurrency)
-    if not resume:
-        jq.enqueue([t.src for t in targets])
-    asyncio.run(jq.run(resume=resume))
-
-    if verbose:
-        click.echo("\nSummary:")
-        click.echo(f" • Files processed:   {len(targets)}")
-        click.echo(f" • Files skipped:     {skipped_files}")
-        click.echo(f" • Output directory:  {out_dir}")
-
-
-if __name__ == "__main__":
-    cli()
-
-
-
+__all__ = ["cli"]
 
