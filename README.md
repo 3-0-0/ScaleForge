@@ -1,6 +1,6 @@
 <!-- README banner -->
 <p align="center">
-  <img src="ScaleForge.png"
+  <img src="assets/brand/banner.png"
        alt="ScaleForge — a dragon forging pixels into detail"
        width="960"
        height="480">
