@@ -10,8 +10,9 @@
 
 Fast, portable AI upscaler/resizer powered by Real-ESRGAN — with smart GPU detection and a single pipeline for CLI and GUI.
 
-[![CI](https://img.shields.io/github/actions/workflow/status/3-0-0/ScaleForge/ci.yml?label=CI)](https://github.com/3-0-0/ScaleForge/actions)
-[![Release](https://img.shields.io/github/v/release/3-0-0/ScaleForge)](https://github.com/3-0-0/ScaleForge/releases)
+ [![Demo smoke](https://github.com/3-0-0/ScaleForge/actions/workflows/demo-smoke.yml/badge.svg)](https://github.com/3-0-0/ScaleForge/actions/workflows/demo-smoke.yml)
+ [![Release](https://github.com/3-0-0/ScaleForge/actions/workflows/release.yml/badge.svg)](https://github.com/3-0-0/ScaleForge/actions/workflows/release.yml)
+ [![Release](https://img.shields.io/github/v/release/3-0-0/ScaleForge)](https://github.com/3-0-0/ScaleForge/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-informational.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/python-3.10–3.12-blue.svg)
 ![OS](https://img.shields.io/badge/OS-Windows%20%7C%20Linux-lightgrey.svg)
