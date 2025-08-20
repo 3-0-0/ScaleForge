@@ -21,7 +21,16 @@ def upscale_image(
     """
 
     try:
-        Image.open(input_path).save(output_path)
+        im = Image.open(input_path)
+        new_size = (int(im.width * scale), int(im.height * scale))
+        resample_map = {
+            "nearest": Image.NEAREST,
+            "bilinear": Image.BILINEAR,
+            "bicubic": Image.BICUBIC,
+            "lanczos": Image.LANCZOS,
+        }
+        resample = resample_map.get(mode.lower(), Image.LANCZOS)
+        im.resize(new_size, resample=resample).save(output_path)
     except Exception as e:
         if debug:
             print(f"Error processing {input_path}: {e}")

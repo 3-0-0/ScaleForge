@@ -27,6 +27,8 @@ def test_overwrite_flag(tmp_path: Path):
     r1 = CliRunner().invoke(cli, ["demo-batch","-i",str(src),"-o",str(dst),"-s","2","--mode","nearest","--suffix","@2x"])
     assert r1.exit_code == 0
     out = next(dst.rglob("*.png"))
+    with Image.open(out) as im:
+        assert im.size == (20,14)
     first_mtime = out.stat().st_mtime
     # Change input and run without overwrite -> should skip
     time.sleep(0.1)
@@ -42,4 +44,6 @@ def test_overwrite_flag(tmp_path: Path):
     r3 = CliRunner().invoke(cli, ["demo-batch","-i",str(src),"-o",str(dst),"-s","2","--mode","nearest","--suffix","@2x","--overwrite"])
     assert r3.exit_code == 0
     assert "wrote:" in r3.output
+    with Image.open(out) as im:
+        assert im.size == (20,14)
     assert out.stat().st_mtime > first_mtime
