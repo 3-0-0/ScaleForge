@@ -1,12 +1,12 @@
 import sqlite3
 
-from scaleforge.db.models import Job, JobStatus
+from scaleforge.db.models import Job, JobStatus, get_conn, SCHEMA_VERSION
 from scaleforge.utils.hash import hash_params
 
 
 def _make_conn(tmp_path):
     """Create and return a database connection that remains open."""
-    from scaleforge.db.models import get_conn
+
     db = tmp_path / "sf.db"
     # Create connection outside context manager to keep it open
     conn = sqlite3.connect(db)
@@ -14,6 +14,30 @@ def _make_conn(tmp_path):
     with get_conn(conn):
         pass
     return conn
+
+
+def test_schema_initialization(tmp_path):
+    db = tmp_path / "sf.db"
+    with get_conn(db) as conn:
+        version = conn.execute("SELECT version FROM schema_info").fetchone()[0]
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(jobs)").fetchall()]
+    assert version == SCHEMA_VERSION
+    assert "attempts" in cols
+
+
+def test_schema_upgrade(tmp_path):
+    db = tmp_path / "sf.db"
+    conn = sqlite3.connect(db)
+    conn.execute("CREATE TABLE schema_info (version INTEGER, updated_at TEXT)")
+    conn.execute(
+        "INSERT INTO schema_info (version, updated_at) VALUES (?, ?)", (0, "old"),
+    )
+    conn.commit()
+    conn.close()
+
+    with get_conn(db) as conn:
+        version = conn.execute("SELECT version FROM schema_info").fetchone()[0]
+    assert version == SCHEMA_VERSION
 
 
 def test_create_or_skip(tmp_path):
