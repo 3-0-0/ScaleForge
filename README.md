@@ -52,6 +52,16 @@ pip install -U pip
 pip install -e ".[demo]" pytest
 ````
 
+### GUI
+
+To use the graphical interface, install the optional GUI dependencies:
+
+```bash
+pip install -e ".[gui]"
+```
+
+This pulls in Kivy and Watchdog for desktop UI and file-system monitoring.
+
 ---
 
 ## GPU Detection & Capability Cache
