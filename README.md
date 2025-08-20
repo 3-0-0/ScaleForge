@@ -86,11 +86,14 @@ scaleforge detect-backend
 scaleforge detect-backend --debug
 ```
 
-**Environment override**
+### Backends & env overrides
 
-Set `SCALEFORGE_BACKEND` to force a backend using its canonical id
-(`torch-eager-cuda`, `torch-eager-cpu`, `cpu-pillow`, `ncnn-ncnn-cpu`).
-`SCALEFORGE_DEVICE` may override only the device portion during auto-detect.
+Canonical backend IDs include `cpu-pillow`, `torch-eager-cpu`,
+`torch-eager-cuda`, `torch-eager-rocm`, `torch-eager-mps`,
+and `ncnn-ncnn-vulkan`.
+
+Set `SCALEFORGE_BACKEND` to force one of these; use `SCALEFORGE_DEVICE`
+to override only the device portion during auto-detect.
 
 ---
 
@@ -104,8 +107,7 @@ Main commands implemented today:
 
 * `detect-backend` — detect/print the selected backend (see above)
 * `run` — run the pipeline (options vary by build)
-* `demo-upscale` — Pillow-only single image upscale (CPU)
-* `demo-batch` — Pillow-only batch upscale (CPU)
+* `demo upscale` — Pillow-only single image upscale (CPU)
 
 ---
 
@@ -115,16 +117,7 @@ A quick CPU-only way to try ScaleForge without GPU toolchains.
 
 ```bash
 # Single image
-python -m scaleforge.cli demo-upscale \
-  -i input.png -o out@2x.png -s 2 --mode lanczos
-
-# Batch (filters, suffix, dry-run, overwrite)
-python -m scaleforge.cli demo-batch \
-  -i ./imgs -o ./out --suffix @2x \
-  --include "./imgs/*.png" --exclude "./imgs/skip*.png" \
-  --limit 100 --dry-run
-
-# When satisfied, run without --dry-run; add --overwrite to replace existing files.
+python -m scaleforge.cli demo upscale --in input.png --out out@2x.png --scale 2
 ```
 
 See **[docs/DEMO.md](docs/DEMO.md)** for more examples and notes on `--mode`, `--suffix`, `--include/--exclude`, `--limit`, `--overwrite`, `--dry-run`, and debug output.
@@ -134,7 +127,7 @@ See **[docs/DEMO.md](docs/DEMO.md)** for more examples and notes on `--mode`, `-
 ## Roadmap (short)
 
 * Backend fallback polish & logging ✅
-* Demo CLI (`demo-upscale`, `demo-batch`) ✅
+* Demo CLI (`demo upscale`) ✅
 * Docs site & richer examples ⏳
 * Packaging improvements and presets ⏳
 
