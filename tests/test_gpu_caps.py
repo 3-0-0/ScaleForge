@@ -23,31 +23,14 @@ def test_env_override(tmp_app_root, monkeypatch):
         pytest.skip("CLI import failed")
 
     runner = CliRunner()
-    monkeypatch.setenv("SCALEFORGE_BACKEND", "torch-cpu")
+    monkeypatch.setenv("SCALEFORGE_BACKEND", "torch-eager-cpu")
 
-    # Mock the CLI command directly instead of internal modules
     with patch("scaleforge.backend.detector.detect_backend") as mock_detect:
-        mock_detect.return_value = {
-            "vendor": "override",
-            "backend": "torch-cpu", 
-            "source": "env"
-        }
-        
-        result = runner.invoke(
-            cli,
-            ["detect-backend", "--debug"],
-            env={"SCALEFORGE_BACKEND": "torch-cpu"},
-        )
-        
-        if result.exit_code != 0:
-            print("CLI output:\n", result.output)
-            if result.exception:
-                print("Exception:", result.exception)
-        
-        # Accept either success (0) or no-backend-found (2)
-        assert result.exit_code in (0, 2)
-        if result.exit_code == 0:
-            assert "torch-cpu" in result.output
+        result = runner.invoke(cli, ["detect-backend", "--debug"])
+
+    assert result.exit_code == 0
+    assert "torch-eager-cpu" in result.output
+    mock_detect.assert_not_called()
 
 
 def _mock_torch(*, cuda=False, cuda_version=None, hip_version=None, mps=False, mps_built=True):
@@ -71,21 +54,21 @@ def _caps_with_torch(torch_module):
 
 def test_fallback_cuda():
     caps = _caps_with_torch(_mock_torch(cuda=True, cuda_version="12.0"))
-    assert caps["backend"] == "torch-cuda"
+    assert caps["backend"] == "torch-eager-cuda"
     assert caps["vendor"] == "nvidia"
     assert caps["cuda"] and not caps["rocm"] and not caps["mps"]
 
 
 def test_fallback_rocm():
     caps = _caps_with_torch(_mock_torch(cuda=True, hip_version="5.6"))
-    assert caps["backend"] == "torch-rocm"
+    assert caps["backend"] == "torch-eager-rocm"
     assert caps["vendor"] == "amd"
     assert caps["rocm"] and not caps["cuda"] and not caps["mps"]
 
 
 def test_fallback_mps():
     caps = _caps_with_torch(_mock_torch(mps=True))
-    assert caps["backend"] == "torch-mps"
+    assert caps["backend"] == "torch-eager-mps"
     assert caps["vendor"] == "apple"
     assert caps["mps"] and not caps["cuda"] and not caps["rocm"]
 
@@ -93,6 +76,6 @@ def test_fallback_mps():
 def test_cpu_only():
     with patch.dict(sys.modules, {"scaleforge.backend.selector": None, "torch": None}):
         caps = detect_gpu_caps()
-    assert caps["backend"] == "torch-cpu"
+    assert caps["backend"] == "torch-eager-cpu"
     assert caps["vendor"] == "cpu"
     assert not any((caps["cuda"], caps["rocm"], caps["mps"]))

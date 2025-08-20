@@ -1,61 +1,98 @@
 """Backend auto-selector.
-
-Chooses the most suitable backend based on environment, GPU availability, and
-user overrides. For the MVP we only switch between TorchBackend (optionally
+Chooses the most suitable backend based on environment, GPU availability,
+and user overrides. For the MVP we only switch between TorchBackend (optionally
 stubbed) and a placeholder VulkanBackend.
 """
 from __future__ import annotations
 
 import logging
 import os
+import warnings
 
 from scaleforge.backend.base import Backend
-from scaleforge.backend.vulkan_backend import VulkanBackend
+from scaleforge.backend.spec import BackendSpec, parse_alias
 from scaleforge.backend.torch_backend import TorchBackend
+from scaleforge.backend.vulkan_backend import VulkanBackend
 
 logger = logging.getLogger(__name__)
 
-ENV_FORCE = ("FORCE_BACKEND", "SCALEFORGE_BACKEND")
+LEGACY_MAP = {
+    "cpu": "cpu-pillow",
+    "torch-cpu": "torch-eager-cpu",
+    "torch-cuda": "torch-eager-cuda",
+    "torch-rocm": "torch-eager-rocm",
+    "torch-mps": "torch-eager-mps",
+    "ncnn": "ncnn-ncnn-cpu",
+    "ncnn-vulkan": "ncnn-ncnn-vulkan",
+}
 
 
-def _env_override() -> str | None:
-    for key in ENV_FORCE:
-        val = os.getenv(key)
-        if val:
-            return val.lower()
-    return None
+def _alias_to_spec(alias: str, debug: bool) -> tuple[BackendSpec, list[str]]:
+    alias = alias.lower()
+    reasons: list[str] = []
+    if alias == "torch":
+        warnings.warn("Legacy backend alias 'torch'", DeprecationWarning, stacklevel=2)
+        from scaleforge.backend.detector import detect_backend as _detect
+
+        spec, det_reasons = _detect(debug=debug)
+        reasons.append("legacy alias 'torch'")
+        reasons.extend(det_reasons)
+        return spec, reasons
+    if alias in LEGACY_MAP:
+        warnings.warn(f"Legacy backend alias '{alias}'", DeprecationWarning, stacklevel=2)
+        canonical = LEGACY_MAP[alias]
+        reasons.append(f"legacy '{alias}' -> '{canonical}'")
+        return parse_alias(canonical), reasons
+    return parse_alias(alias), reasons
 
 
-def get_backend(model_name: str | None = None) -> Backend:
-    """Return a Backend instance following the selection rules.
-    
-    Args:
-        model_name: Optional model name to load. Supported values:
-            - 'realesr-general-x4v3' (default)
-            - 'realesrgan-x4plus'
-            - 'realesr-animevideov3'
-    """
+def get_backend_alias(backend: str | BackendSpec | None = None, *, debug: bool = False) -> tuple[str, list[str]]:
+    """Return canonical backend alias and reasons."""
+    reasons: list[str] = []
+    env_backend = os.getenv("SCALEFORGE_BACKEND")
+    if env_backend:
+        spec, r = _alias_to_spec(env_backend, debug)
+        reasons.append(f"SCALEFORGE_BACKEND={env_backend}")
+        reasons.extend(r)
+        return spec.alias, reasons
 
-    use_stub = os.getenv("SF_STUB_UPSCALE", "0") == "1"
-
-    override = _env_override()
-    if override:
-        backend_name = override
-        logger.info("Backend forced to %s (override)", backend_name)
+    if backend is not None:
+        if isinstance(backend, BackendSpec):
+            spec = backend
+        else:
+            spec, r = _alias_to_spec(backend, debug)
+            reasons.extend(r)
     else:
-        from scaleforge.backend.detector import detect_backend
+        from scaleforge.backend.detector import detect_backend as _detect
 
-        backend_name = detect_backend()
-        logger.info("Auto-detected backend %s", backend_name)
+        spec, det_reasons = _detect(debug=debug)
+        reasons.extend(det_reasons)
 
-    torch_backends = {"torch-cuda", "torch-rocm", "torch-mps", "torch-cpu"}
-    if backend_name in torch_backends:
-        logger.info("Using Torch backend (%s)", backend_name)
+    device_override = os.getenv("SCALEFORGE_DEVICE")
+    if device_override:
+        spec = BackendSpec(spec.vendor, spec.engine, device_override)
+        reasons.append(f"SCALEFORGE_DEVICE={device_override}")
+
+    return spec.alias, reasons
+
+
+def detect_backend(debug: bool = False) -> tuple[BackendSpec, list[str]]:
+    alias, reasons = get_backend_alias(debug=debug)
+    return parse_alias(alias), reasons
+
+
+def get_backend(
+    model_name: str | None = None,
+    backend: str | BackendSpec | None = None,
+) -> Backend:
+    """Return a Backend instance following the selection rules."""
+    use_stub = os.getenv("SF_STUB_UPSCALE", "0") == "1"
+    alias, _reasons = get_backend_alias(backend)
+    if alias.startswith("torch-"):
+        logger.info("Using Torch backend (%s)", alias)
         return TorchBackend(model_name=model_name, stub=use_stub)
-
-    if "vulkan" in backend_name:
-        logger.info("Using Vulkan backend (%s)", backend_name)
+    if "vulkan" in alias or alias.startswith("ncnn-"):
+        logger.info("Using Vulkan backend (%s)", alias)
         return VulkanBackend()
-
-    logger.warning("Unknown backend '%s' – defaulting to Vulkan backend", backend_name)
+    logger.warning("Unknown backend '%s' – defaulting to Vulkan backend", alias)
     return VulkanBackend()
