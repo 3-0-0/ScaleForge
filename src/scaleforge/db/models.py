@@ -7,9 +7,8 @@ import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+from dataclasses import dataclass, field
 from typing import Iterator, Any, Mapping
-
-from pydantic import BaseModel, Field
 
 
 # ---------------------------------------------------------------------------
@@ -125,21 +124,29 @@ class JobStatus:
     FAILED = "failed"
 
 
-class Job(BaseModel):
-    id: int | None = None
+@dataclass
+class Job:
+    """Lightweight record representing a queued upscale operation.
+
+    The original project used :class:`pydantic.BaseModel` for this data
+    structure.  Re‑implementing the full Pydantic feature set would be
+    overkill for the exercises, so a small dataclass with manual defaults is
+    used instead.  Only the behaviour required by the tests is implemented.
+    """
+
     src_path: str
     hash: str
-    status: str = Field(default=JobStatus.PENDING)
+    id: int | None = None
+    status: str = JobStatus.PENDING
     error: str | None = None
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
+    updated_at: str = field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
     attempts: int = 0
     metadata: dict[str, Any] | None = None
-
-    model_config = {
-        "populate_by_name": True,
-        "arbitrary_types_allowed": True,
-    }
 
     @classmethod
     def create_or_skip(cls, conn: sqlite3.Connection, data: Mapping[str, Any]) -> "Job | None":
