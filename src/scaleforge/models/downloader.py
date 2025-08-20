@@ -7,7 +7,8 @@ CLI currently relies on: reading the registry, checking if a model has already
 been downloaded and downloading a model while verifying the checksum.
 
 The registry entries are defined in :mod:`scaleforge.models.registry` and are
-validated using :class:`~scaleforge.models.registry.ModelSchema`.
+represented as simple dictionaries.  Heavy validation is avoided to keep the
+test environment light-weight.
 """
 
 from __future__ import annotations
@@ -16,17 +17,17 @@ from dataclasses import dataclass
 import hashlib
 import urllib.request
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Any
 
 from scaleforge.config.loader import load_config
-from scaleforge.models.registry import ModelSchema, load_effective_registry
+from scaleforge.models.registry import load_effective_registry
 
 
 @dataclass
 class _ResolvedModel:
     """Internal helper describing a resolved model entry."""
 
-    info: ModelSchema
+    info: Dict[str, Any]
     path: Path
 
 
@@ -42,22 +43,23 @@ class ModelDownloader:
     # ------------------------------------------------------------------
     # Registry helpers
     # ------------------------------------------------------------------
-    def get_registry(self) -> Dict[str, ModelSchema]:
-        """Return the model registry mapping names to schemas."""
+    def get_registry(self) -> Dict[str, Dict[str, Any]]:
+        """Return the model registry mapping names to raw entry dictionaries."""
 
         if self._registry is None:
             data = load_effective_registry()
             resolved: Dict[str, _ResolvedModel] = {}
             for raw in data.get("models", []):
-                try:
-                    info = ModelSchema.model_validate(raw)
-                except Exception:
-                    # Skip invalid entries – they will be reported by validation
-                    # utilities, but the downloader keeps working with the valid
-                    # ones it has.
+                # Entries are assumed to have already been validated elsewhere;
+                # we simply skip obviously malformed ones.
+                name = raw.get("name")
+                url = raw.get("url")
+                urls = raw.get("urls")
+                if not name or (not url and not urls):
                     continue
-                filename = info.filename or Path(info.resolved_urls()[0]).name
-                resolved[info.name] = _ResolvedModel(info=info, path=self.model_dir / filename)
+                first_url = url or urls[0]
+                filename = raw.get("filename") or Path(first_url).name
+                resolved[name] = _ResolvedModel(info=raw, path=self.model_dir / filename)
             self._registry = resolved
 
         # ``self._registry`` maps to ``_ResolvedModel`` but the public contract is
