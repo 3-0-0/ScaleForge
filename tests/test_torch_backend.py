@@ -1,5 +1,4 @@
 from __future__ import annotations
-import asyncio
 import hashlib
 import os
 import sys
@@ -69,7 +68,8 @@ def stub_heavy_deps(tmp_path, monkeypatch):
     )
 
 
-def test_upscale_roundtrip(tmp_path):
+@pytest.mark.asyncio
+async def test_upscale_roundtrip(tmp_path):
     """Backend should save an output file without heavy deps."""
 
     from scaleforge.backend.torch_backend import TorchRealESRGANBackend
@@ -79,7 +79,7 @@ def test_upscale_roundtrip(tmp_path):
     Image.new("RGB", (8, 8), "white").save(src)
 
     backend = TorchRealESRGANBackend(prefer_gpu=False)
-    asyncio.run(backend.upscale(src, dst))
+    await backend.upscale(src, dst)
 
     assert dst.exists()
 
